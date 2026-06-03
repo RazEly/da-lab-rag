@@ -22,7 +22,7 @@ def get_model() -> SentenceTransformer:
 def embed_texts(
     texts: Sequence[str],
     *,
-    batch_size: int = 64,
+    batch_size: int = 512,
     show_progress: bool = True,
 ) -> np.ndarray:
     """Return L2-normalized embeddings, shape (n, dim)."""

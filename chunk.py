@@ -8,11 +8,14 @@ from typing import Any, Dict, List, Sequence, Set, Tuple
 
 import numpy as np
 
+from embed import embed_texts
+
 MAX_WORDS = 140
 MIN_WORDS = 40
 BREAKPOINT_PCTL = 20
 TITLE_PREPEND_THRESHOLD = 50
 SLIDING_FALLBACK_OVERLAP = 30
+ENCODE_BATCH_SIZE = 2000
 
 # AD years 1000-2099; word boundaries prevent partial matches inside longer numbers
 _YEAR_RE = re.compile(r"\b((?:1[0-9]|20)\d{2})\b")
@@ -87,12 +90,18 @@ def _split_sentences(content: str) -> Tuple[List[str], Set[int]]:
 
 def _sliding_split(sentence: str, max_words: int, overlap: int) -> List[str]:
     words = sentence.split()
-    if len(words) <= max_words:
+    n = len(words)
+    if n <= max_words:
         return [sentence]
     step = max_words - overlap
     out: List[str] = []
-    for start in range(0, max(1, len(words) - overlap), step):
+    start = 0
+    while start + max_words < n:
         out.append(" ".join(words[start : start + max_words]))
+        start += step
+    # Anchor final window to the end so the tail is exactly max_words wide,
+    # never a sub-min residual. Slight overlap with prior window is acceptable.
+    out.append(" ".join(words[n - max_words : n]))
     return out
 
 
@@ -128,23 +137,35 @@ def _assemble_chunks(
 
 
 def _merge_residuals(chunks: List[str], min_words: int, max_words: int) -> List[str]:
-    """Merge any chunk < min_words into a neighbor (prefer previous)."""
+    """Merge any chunk < min_words into a neighbor (prefer previous).
+
+    Cap is max_words: merging past the MiniLM safe margin would silently
+    truncate at embed time. Unmergeable residuals stay tiny and are
+    rescued by title-prepend in _make_chunks.
+    """
     if not chunks:
         return chunks
     out: List[str] = [chunks[0]]
+    out_wc: List[int] = [len(chunks[0].split())]
     for ch in chunks[1:]:
-        if len(out[-1].split()) < min_words:
-            merged = out[-1] + " " + ch
-            if len(merged.split()) <= max_words + min_words:
-                out[-1] = merged
-                continue
-        out.append(ch)
-    if len(out) >= 2 and len(out[-1].split()) < min_words:
-        merged = out[-2] + " " + out[-1]
-        if len(merged.split()) <= max_words + min_words:
-            out[-2] = merged
-            out.pop()
+        ch_wc = len(ch.split())
+        if out_wc[-1] < min_words and out_wc[-1] + ch_wc <= max_words:
+            out[-1] = out[-1] + " " + ch
+            out_wc[-1] += ch_wc
+        else:
+            out.append(ch)
+            out_wc.append(ch_wc)
+    if (
+        len(out) >= 2
+        and out_wc[-1] < min_words
+        and out_wc[-2] + out_wc[-1] <= max_words
+    ):
+        out[-2] = out[-2] + " " + out[-1]
+        out.pop()
     return out
+
+
+_MIN_SENTS_FOR_SEMANTIC_BREAK = 5
 
 
 def _semantic_breakpoints(
@@ -152,52 +173,28 @@ def _semantic_breakpoints(
     forced: Set[int],
     pctl: float,
 ) -> Set[int]:
+    # Below ~5 sentences the percentile threshold is degenerate and forces
+    # a break regardless of how cohesive the page actually is. Fall back
+    # to paragraph-only (forced) breaks for short pages.
     n = sent_vecs.shape[0]
-    if n < 2:
+    if n < _MIN_SENTS_FOR_SEMANTIC_BREAK:
         return set(forced)
     sims = np.sum(sent_vecs[:-1] * sent_vecs[1:], axis=1)
-    if sims.size == 0:
-        return set(forced)
     threshold = float(np.percentile(sims, pctl))
     breaks = {i + 1 for i, s in enumerate(sims) if s < threshold}
     return breaks | forced
 
 
-def chunk_entry(record: Dict[str, Any], *, sent_encoder=None) -> List[Chunk]:
-    """Semantic-chunk one record.
-
-    sent_encoder: callable(list[str]) -> np.ndarray of L2-normalized vectors.
-    If None, falls back to single-chunk-per-page (used only when caller wants
-    a degenerate path; production builds always pass encoder).
-    """
-    page_id = int(record["page_id"])
-    title = record.get("title", "")
-    content = record.get("content", "") or ""
-
-    sentences, forced = _split_sentences(content)
-    if not sentences:
-        return []
-
-    if len(sentences) == 1 or sent_encoder is None:
-        bodies = (
-            _sliding_split(
-                sentences[0] if sentences else "", MAX_WORDS, SLIDING_FALLBACK_OVERLAP
-            )
-            if len(sentences) == 1
-            else [" ".join(sentences)]
-        )
-    else:
-        sent_vecs = sent_encoder(sentences)
-        breaks = _semantic_breakpoints(sent_vecs, forced, BREAKPOINT_PCTL)
-        bodies = _assemble_chunks(sentences, breaks, MAX_WORDS)
-        bodies = _merge_residuals(bodies, MIN_WORDS, MAX_WORDS)
-
+def _make_chunks(bodies: List[str], page_id: int, title: str) -> List[Chunk]:
     chunks: List[Chunk] = []
     for i, body in enumerate(bodies):
         body = body.strip()
         if not body:
             continue
-        if len(body.split()) < TITLE_PREPEND_THRESHOLD and title:
+        # Tiny chunks embed as noise; prepend title to anchor the vector
+        # topically. Metadata (years/months) still extracted from body
+        # alone so title tokens don't leak into filters.
+        if title and len(body.split()) < TITLE_PREPEND_THRESHOLD:
             text = f"{title}. {body}"
         else:
             text = body
@@ -216,20 +213,42 @@ def chunk_entry(record: Dict[str, Any], *, sent_encoder=None) -> List[Chunk]:
 
 def chunk_corpus(
     records: List[Dict[str, Any]],
-    *,
-    sent_encoder=None,
+    show_progress: bool = True,
+    encode_batch: int = ENCODE_BATCH_SIZE,
 ) -> List[Chunk]:
-    """Semantic-chunk corpus. sent_encoder lazy-built if not provided.
+    """Semantic-chunk corpus.
 
-    The encoder is invoked per record (ST batches internally) so memory stays bounded.
+    Processes records in batches of encode_batch to cap peak memory while
+    still saturating MKL better than per-record encoding.
     """
-    if sent_encoder is None:
-        from embed import embed_texts
-
-        def sent_encoder(texts):
-            return embed_texts(texts, show_progress=False)
 
     chunks: List[Chunk] = []
-    for record in records:
-        chunks.extend(chunk_entry(record, sent_encoder=sent_encoder))
+    for batch_start in range(0, len(records), encode_batch):
+        batch = records[batch_start : batch_start + encode_batch]
+        batch_sentences: List[str] = []
+        batch_spans: List[Tuple[Dict[str, Any], int, int, Set[int]]] = []
+        for record in batch:
+            content = record.get("content", "") or ""
+            sents, forced = _split_sentences(content)
+            lo = len(batch_sentences)
+            batch_sentences.extend(sents)
+            batch_spans.append((record, lo, len(batch_sentences), forced))
+        if not batch_sentences:
+            continue
+        batch_vecs = embed_texts(batch_sentences)
+        for record, lo, hi, forced in batch_spans:
+            sents = batch_sentences[lo:hi]
+            if not sents:
+                continue
+            page_id = int(record["page_id"])
+            title = record.get("title", "")
+            if len(sents) == 1:
+                bodies = _sliding_split(sents[0], MAX_WORDS, SLIDING_FALLBACK_OVERLAP)
+            else:
+                breaks = _semantic_breakpoints(
+                    batch_vecs[lo:hi], forced, BREAKPOINT_PCTL
+                )
+                bodies = _assemble_chunks(sents, breaks, MAX_WORDS)
+                bodies = _merge_residuals(bodies, MIN_WORDS, MAX_WORDS)
+            chunks.extend(_make_chunks(bodies, page_id, title))
     return chunks

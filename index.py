@@ -28,9 +28,12 @@ def build_index(
     """
     out_dir = artifacts_dir or ensure_artifacts_dir()
     records = list(iter_entries(entries_dir))
-    chunks: List[Chunk] = chunk_corpus(records)
+    print(f"[index] loaded {len(records)} records")
+    chunks: List[Chunk] = chunk_corpus(records, show_progress=True)
     texts = [c.text for c in chunks]
-    vectors = embed_texts(texts)
+    print(f"[index] embedding {len(texts)} chunk texts...")
+    vectors = embed_texts(texts, show_progress=True)
+    print(f"[index] saving {len(vectors)} vectors to {out_dir}")
     page_ids = [c.page_id for c in chunks]
 
     np.save(out_dir / INDEX_VECTORS_NAME, vectors)
