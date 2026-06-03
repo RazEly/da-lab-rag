@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -21,11 +21,10 @@ def build_index(
     artifacts_dir: Optional[Path] = None,
 ) -> Tuple[np.ndarray, List[int]]:
     """
-    Embed the full corpus and persist artifacts.
+    Embed the full corpus (semantic chunks) and persist artifacts.
 
     Returns (vectors, page_ids) where row i corresponds to page_ids[i].
-    For multi-chunk pipelines, store chunk metadata in index_meta.json and
-    aggregate to page_id in retrieve.py.
+    Chunk-level vectors; aggregation to page happens in retrieve.py.
     """
     out_dir = artifacts_dir or ensure_artifacts_dir()
     records = list(iter_entries(entries_dir))
@@ -38,6 +37,8 @@ def build_index(
     meta = {
         "page_ids": page_ids,
         "chunk_ids": [c.chunk_id for c in chunks],
+        "page_titles": [c.title for c in chunks],
+        "chunk_word_counts": [len(c.text.split()) for c in chunks],
         "model": "sentence-transformers/all-MiniLM-L6-v2",
         "num_vectors": len(page_ids),
     }
@@ -56,3 +57,9 @@ def load_index(
     meta = json.loads((root / INDEX_META_NAME).read_text(encoding="utf-8"))
     page_ids = [int(x) for x in meta["page_ids"]]
     return vectors, page_ids
+
+
+def load_meta(artifacts_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Load full index meta dict (for BM25, reranking, diagnostics)."""
+    root = artifacts_dir or ARTIFACTS_DIR
+    return json.loads((root / INDEX_META_NAME).read_text(encoding="utf-8"))

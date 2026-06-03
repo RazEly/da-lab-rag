@@ -30,6 +30,9 @@ def search_batch(
 
     scores = query_vectors @ corpus_vectors.T
     ranked: List[List[int]] = []
+    # Dedupe-by-page on a globally sorted chunk list == max-pool aggregation
+    # (the first chunk seen for any page is its highest-scoring one). S6 will
+    # replace this with an explicit max+mean blend.
     for row in scores:
         order = np.argsort(-row)
         seen: set[int] = set()
