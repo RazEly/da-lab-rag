@@ -1,4 +1,5 @@
 """Embedding utilities (sentence-transformers/all-MiniLM-L6-v2 only)."""
+
 from __future__ import annotations
 
 from typing import List, Sequence
@@ -26,7 +27,7 @@ def embed_texts(texts: Sequence[str], *, batch_size: int = 64) -> np.ndarray:
     vectors = model.encode(
         list(texts),
         batch_size=batch_size,
-        show_progress_bar=False,
+        show_progress_bar=True,
         convert_to_numpy=True,
         normalize_embeddings=True,
     )
