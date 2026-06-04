@@ -17,22 +17,54 @@ INDEX_META_NAME = "index_meta.json"
 FAISS_INDEX_NAME = "faiss.index"
 
 
+def _select_subset(records: List[Dict[str, Any]], n: int) -> List[Dict[str, Any]]:
+    """
+    Pick an n-page subset for fast local dev, always keeping the public queries'
+    ground-truth pages. Without this, none of the relevant pages get indexed and
+    local NDCG is structurally 0 — the corpus is 27k pages, GT is 100 of them.
+    """
+    from utils import load_public_queries
+
+    gt: set = set()
+    for row in load_public_queries():
+        gt.update(row["relevant_page_ids"])
+
+    gt_recs = [r for r in records if r["page_id"] in gt]
+    other = [r for r in records if r["page_id"] not in gt]
+
+    if n <= len(gt_recs):
+        print(
+            f"[index] WARN: subset {n} <= {len(gt_recs)} ground-truth pages; "
+            "keeping GT pages only — some queries still unscorable below 100."
+        )
+        return gt_recs[:n]
+
+    fill = other[: n - len(gt_recs)]
+    print(f"[index] subset: {len(gt_recs)} GT + {len(fill)} filler = {len(gt_recs) + len(fill)} pages")
+    return gt_recs + fill
+
+
 def build_index(
     *,
     entries_dir: Optional[Path] = None,
     artifacts_dir: Optional[Path] = None,
     chunking_strategy: str = "semantic",
+    subset: Optional[int] = None,
 ) -> Tuple[np.ndarray, List[int]]:
     """
     Embed the full corpus and persist artifacts.
 
     chunking_strategy: ``"semantic"`` (default) or ``"sliding"`` (fixed token window).
+    subset: if set, index only N pages (GT-inclusive) for fast local iteration.
+            Leave None for the real submission build.
     Returns (vectors, page_ids) where row i corresponds to page_ids[i].
     Chunk-level vectors; aggregation to page happens in retrieve.py.
     """
     out_dir = artifacts_dir or ensure_artifacts_dir()
     records = list(iter_entries(entries_dir))
     print(f"[index] loaded {len(records)} records")
+    if subset is not None:
+        records = _select_subset(records, subset)
     chunks: List[Chunk] = chunk_corpus(records, show_progress=True, strategy=chunking_strategy)
     texts = [c.text for c in chunks]
     print(f"[index] embedding {len(texts)} chunk texts...")
