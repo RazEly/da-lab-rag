@@ -30,11 +30,21 @@ def run(queries: List[str]) -> List[List[int]]:
     return search_batch(queries)
 
 
-def build_offline_index() -> None:
-    """Run once locally to create artifacts/ (not timed at grading)."""
-    build_index()
+def build_offline_index(chunking_strategy: str = "semantic") -> None:
+    """Run once locally to create artifacts/ (not timed at grading).
+
+    chunking_strategy: ``"semantic"`` (default) or ``"sliding"`` (debugging).
+    """
+    build_index(chunking_strategy=chunking_strategy)
 
 
 if __name__ == "__main__":
-    build_offline_index()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--strategy", default="semantic", choices=["semantic", "sliding"],
+        help="Chunking strategy (default: semantic)"
+    )
+    args = parser.parse_args()
+    build_offline_index(chunking_strategy=args.strategy)
     print("Index built under artifacts/. Run: python scripts/eval_public.py")

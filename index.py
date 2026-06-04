@@ -7,29 +7,33 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from bm25 import build_bm25
 from chunk import Chunk, chunk_corpus
 from embed import embed_texts
 from utils import ARTIFACTS_DIR, ensure_artifacts_dir, iter_entries
 
 INDEX_VECTORS_NAME = "index_vectors.npy"
 INDEX_META_NAME = "index_meta.json"
+FAISS_INDEX_NAME = "faiss.index"
 
 
 def build_index(
     *,
     entries_dir: Optional[Path] = None,
     artifacts_dir: Optional[Path] = None,
+    chunking_strategy: str = "semantic",
 ) -> Tuple[np.ndarray, List[int]]:
     """
-    Embed the full corpus (semantic chunks) and persist artifacts.
+    Embed the full corpus and persist artifacts.
 
+    chunking_strategy: ``"semantic"`` (default) or ``"sliding"`` (fixed token window).
     Returns (vectors, page_ids) where row i corresponds to page_ids[i].
     Chunk-level vectors; aggregation to page happens in retrieve.py.
     """
     out_dir = artifacts_dir or ensure_artifacts_dir()
     records = list(iter_entries(entries_dir))
     print(f"[index] loaded {len(records)} records")
-    chunks: List[Chunk] = chunk_corpus(records, show_progress=True)
+    chunks: List[Chunk] = chunk_corpus(records, show_progress=True, strategy=chunking_strategy)
     texts = [c.text for c in chunks]
     print(f"[index] embedding {len(texts)} chunk texts...")
     vectors = embed_texts(texts, show_progress=True)
@@ -48,7 +52,24 @@ def build_index(
     (out_dir / INDEX_META_NAME).write_text(
         json.dumps(meta, indent=2), encoding="utf-8"
     )
+
+    build_bm25(chunks, out_dir)
+    _build_faiss(vectors, out_dir)
+
     return vectors, page_ids
+
+
+def _build_faiss(vectors: np.ndarray, out_dir: Path) -> None:
+    """Build and save FAISS IndexFlatIP (exact cosine for L2-normalised vectors)."""
+    try:
+        import faiss  # type: ignore
+        dim = vectors.shape[1]
+        idx = faiss.IndexFlatIP(dim)
+        idx.add(vectors)
+        faiss.write_index(idx, str(out_dir / FAISS_INDEX_NAME))
+        print(f"[index] FAISS index saved → {out_dir / FAISS_INDEX_NAME}")
+    except Exception as exc:
+        print(f"[index] FAISS build skipped: {exc}")
 
 
 def load_index(
