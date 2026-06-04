@@ -10,12 +10,13 @@ import numpy as np
 
 from embed import embed_texts, get_model
 
-MAX_TOKENS = 200
-MIN_TOKENS = 50
+MAX_WORDS = 170
+MIN_WORDS = 50
 BREAKPOINT_PCTL = 20
-TITLE_PREPEND_THRESHOLD = 60   # tokens
-SLIDING_FALLBACK_OVERLAP = 40  # tokens
+TITLE_PREPEND_THRESHOLD = 60   # words
+SLIDING_FALLBACK_OVERLAP = 40  # words
 ENCODE_BATCH_SIZE = 27000
+_SLIDING_WINDOW_MAX_TOKENS = 200  # token cap for debug sliding strategy
 
 # AD years 1000-2099; word boundaries prevent partial matches inside longer numbers
 _YEAR_RE = re.compile(r"\b((?:1[0-9]|20)\d{2})\b")
@@ -69,8 +70,8 @@ class Chunk:
     months: Set[str] = field(default_factory=set)
 
 
-def _count_tokens(text: str) -> int:
-    return len(get_model().tokenizer.encode(text, add_special_tokens=False))
+def _count_words(text: str) -> int:
+    return len(text.split())
 
 
 def _split_sentences(content: str) -> Tuple[List[str], Set[int]]:
@@ -92,70 +93,68 @@ def _split_sentences(content: str) -> Tuple[List[str], Set[int]]:
     return sentences, forced
 
 
-def _sliding_split(sentence: str, max_tokens: int, overlap_tokens: int) -> List[str]:
-    """Split a too-long sentence by sliding a token window over its token IDs."""
-    tokenizer = get_model().tokenizer
-    token_ids = tokenizer.encode(sentence, add_special_tokens=False)
-    n = len(token_ids)
-    if n <= max_tokens:
+def _sliding_split(sentence: str, max_words: int, overlap_words: int) -> List[str]:
+    """Split a too-long sentence by sliding a word window."""
+    words = sentence.split()
+    n = len(words)
+    if n <= max_words:
         return [sentence]
-    step = max_tokens - overlap_tokens
+    step = max_words - overlap_words
     out: List[str] = []
     start = 0
-    while start + max_tokens < n:
-        out.append(tokenizer.decode(token_ids[start : start + max_tokens]))
+    while start + max_words < n:
+        out.append(" ".join(words[start : start + max_words]))
         start += step
-    # Anchor final window to the end so the tail is exactly max_tokens wide,
-    # never a sub-min residual. Slight overlap with prior window is acceptable.
-    out.append(tokenizer.decode(token_ids[n - max_tokens : n]))
+    # Anchor final window to end so tail is exactly max_words wide.
+    out.append(" ".join(words[n - max_words : n]))
     return out
 
 
 def _assemble_chunks(
     sentences: Sequence[str],
-    sent_token_counts: Sequence[int],
+    sent_word_counts: Sequence[int],
     breakpoints: Set[int],
-    max_tokens: int,
+    max_words: int,
 ) -> List[str]:
-    """Greedy: walk sentences, cut at breakpoint OR when adding next exceeds max_tokens.
+    """Greedy: walk sentences, cut at breakpoint OR when adding next exceeds max_words.
 
-    Sentences longer than max_tokens are sliding-window split in place.
+    Sentences longer than max_words are sliding-window split in place.
     """
     chunks: List[str] = []
     buf: List[str] = []
-    buf_tokens = 0
-    for i, (sent, sent_toks) in enumerate(zip(sentences, sent_token_counts)):
-        if sent_toks > max_tokens:
+    buf_words = 0
+    for i, (sent, sent_toks) in enumerate(zip(sentences, sent_word_counts)):
+        if sent_toks > max_words:
             if buf:
                 chunks.append(" ".join(buf))
-                buf, buf_tokens = [], 0
-            chunks.extend(_sliding_split(sent, max_tokens, SLIDING_FALLBACK_OVERLAP))
+                buf, buf_words = [], 0
+            chunks.extend(_sliding_split(sent, max_words, SLIDING_FALLBACK_OVERLAP))
             continue
         is_break = i in breakpoints
-        if buf and (is_break or buf_tokens + sent_toks > max_tokens):
+        if buf and (is_break or buf_words + sent_toks > max_words):
             chunks.append(" ".join(buf))
-            buf, buf_tokens = [], 0
+            buf, buf_words = [], 0
         buf.append(sent)
-        buf_tokens += sent_toks
+        buf_words += sent_toks
     if buf:
         chunks.append(" ".join(buf))
     return chunks
 
 
-def _merge_residuals(chunks: List[str], min_tokens: int, max_tokens: int) -> List[str]:
-    """Merge any chunk < min_tokens into a neighbor (prefer previous).
+def _merge_residuals(chunks: List[str], min_words: int, max_words: int) -> List[str]:
+    """Merge any chunk < min_words into a neighbor (prefer previous).
 
-    Cap is max_tokens: merging past the MiniLM safe margin would silently
-    truncate at embed time. Unmergeable residuals stay tiny and are
-    rescued by title-prepend in _make_chunks.
+    Cap is max_words: merging past the safe margin would silently truncate
+    at embed time. Unmergeable residuals stay tiny and are rescued by
+    title-prepend in _make_chunks.
     """
     if not chunks:
         return chunks
     out: List[str] = [chunks[0]]
-    out_tc: List[int] = [_count_tokens(chunks[0])]
+    out_tc: List[int] = [_count_words(chunks[0])]
     for ch in chunks[1:]:
-        ch_tc = _count_tokens(ch)
-        if out_tc[-1] < min_tokens and out_tc[-1] + ch_tc <= max_tokens:
+        ch_tc = _count_words(ch)
+        if out_tc[-1] < min_words and out_tc[-1] + ch_tc <= max_words:
             out[-1] = out[-1] + " " + ch
             out_tc[-1] += ch_tc
         else:
@@ -163,8 +162,8 @@ def _merge_residuals(chunks: List[str], min_tokens: int, max_tokens: int) -> Lis
             out_tc.append(ch_tc)
     if (
         len(out) >= 2
-        and out_tc[-1] < min_tokens
-        and out_tc[-2] + out_tc[-1] <= max_tokens
+        and out_tc[-1] < min_words
+        and out_tc[-2] + out_tc[-1] <= max_words
     ):
         out[-2] = out[-2] + " " + out[-1]
         out.pop()
@@ -198,16 +197,17 @@ def _sliding_window_page_chunks(content: str, page_id: int, title: str) -> List[
     n = len(token_ids)
     if n == 0:
         return []
-    step = MAX_TOKENS - SLIDING_FALLBACK_OVERLAP
+    cap = _SLIDING_WINDOW_MAX_TOKENS
+    step = cap - SLIDING_FALLBACK_OVERLAP
     windows: List[str] = []
-    if n <= MAX_TOKENS:
+    if n <= cap:
         windows.append(tokenizer.decode(token_ids))
     else:
         start = 0
-        while start + MAX_TOKENS < n:
-            windows.append(tokenizer.decode(token_ids[start : start + MAX_TOKENS]))
+        while start + cap < n:
+            windows.append(tokenizer.decode(token_ids[start : start + cap]))
             start += step
-        windows.append(tokenizer.decode(token_ids[n - MAX_TOKENS : n]))
+        windows.append(tokenizer.decode(token_ids[n - cap : n]))
     return _make_chunks(windows, page_id, title)
 
 
@@ -220,7 +220,7 @@ def _make_chunks(bodies: List[str], page_id: int, title: str) -> List[Chunk]:
         # Tiny chunks embed as noise; prepend title to anchor the vector
         # topically. Metadata (years/months) still extracted from body
         # alone so title tokens don't leak into filters.
-        if title and _count_tokens(body) < TITLE_PREPEND_THRESHOLD:
+        if title and _count_words(body) < TITLE_PREPEND_THRESHOLD:
             text = f"{title}. {body}"
         else:
             text = body
@@ -258,7 +258,6 @@ def chunk_corpus(
         return chunks
 
     chunks = []
-    tokenizer = get_model().tokenizer
     for batch_start in range(0, len(records), encode_batch):
         batch = records[batch_start : batch_start + encode_batch]
         batch_sentences: List[str] = []
@@ -272,24 +271,21 @@ def chunk_corpus(
         if not batch_sentences:
             continue
         batch_vecs = embed_texts(batch_sentences)
-        batch_token_counts = [
-            len(tokenizer.encode(s, add_special_tokens=False))
-            for s in batch_sentences
-        ]
+        batch_word_counts = [len(s.split()) for s in batch_sentences]
         for record, lo, hi, forced in batch_spans:
             sents = batch_sentences[lo:hi]
             if not sents:
                 continue
             page_id = int(record["page_id"])
             title = record.get("title", "")
-            token_counts = batch_token_counts[lo:hi]
+            word_counts = batch_word_counts[lo:hi]
             if len(sents) == 1:
-                bodies = _sliding_split(sents[0], MAX_TOKENS, SLIDING_FALLBACK_OVERLAP)
+                bodies = _sliding_split(sents[0], MAX_WORDS, SLIDING_FALLBACK_OVERLAP)
             else:
                 breaks = _semantic_breakpoints(
                     batch_vecs[lo:hi], forced, BREAKPOINT_PCTL
                 )
-                bodies = _assemble_chunks(sents, token_counts, breaks, MAX_TOKENS)
-                bodies = _merge_residuals(bodies, MIN_TOKENS, MAX_TOKENS)
+                bodies = _assemble_chunks(sents, word_counts, breaks, MAX_WORDS)
+                bodies = _merge_residuals(bodies, MIN_WORDS, MAX_WORDS)
             chunks.extend(_make_chunks(bodies, page_id, title))
     return chunks
