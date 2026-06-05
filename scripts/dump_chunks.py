@@ -1,4 +1,4 @@
-"""Debug: dump the semantic chunk split for a single corpus JSON file.
+"""Debug: dump the chunk split for a single corpus JSON file.
 
 Usage:
     python scripts/dump_chunks.py data/Wikipedia\\ Entries/10000.json [out.txt]
@@ -25,7 +25,7 @@ def main() -> None:
     record = json.loads(in_path.read_text(encoding="utf-8"))
     record["page_id"] = normalize_page_id(record.get("page_id", in_path.stem))
 
-    chunks = chunk_corpus([record], show_progress=False, strategy="semantic")
+    chunks = chunk_corpus([record])
 
     out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else in_path.with_suffix(".chunks.txt")
     blocks = []

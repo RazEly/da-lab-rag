@@ -42,14 +42,15 @@ def build_bm25(chunks, out_dir: Optional[Path] = None) -> None:
     """
     Build BM25 index from a list of Chunk objects and save to out_dir/bm25.npz.
 
-    BM25 document text is title + chunk.text. For short chunks chunk.text already
-    has title prepended; the minor duplication is acceptable (slight title boost).
+    BM25 document text is chunk.text, which already has the title prepended as
+    ``[title] body`` (see chunk._make_chunks) — so title tokens are indexed
+    without re-concatenating c.title (which would double-count them).
     """
     out_dir = out_dir or ARTIFACTS_DIR
     n = len(chunks)
     print(f"[bm25] tokenizing {n} chunks ...")
 
-    docs: List[List[str]] = [tokenize(f"{c.title} {c.text}") for c in chunks]
+    docs: List[List[str]] = [tokenize(c.text) for c in chunks]
 
     doc_lengths = np.array([len(d) for d in docs], dtype=np.float32)
     avgdl = float(doc_lengths.mean()) if n > 0 else 1.0

@@ -30,31 +30,23 @@ def run(queries: List[str]) -> List[List[int]]:
     return search_batch(queries)
 
 
-def build_offline_index(
-    chunking_strategy: str = "semantic",
-    subset: int | None = None,
-) -> None:
+def build_offline_index(subset: int | None = None) -> None:
     """Run once locally to create artifacts/ (not timed at grading).
 
-    chunking_strategy: ``"semantic"`` (default) or ``"sliding"`` (debugging).
     subset: index only N pages (ground-truth-inclusive) for fast local dev.
             Leave None for the real submission build.
     """
-    build_index(chunking_strategy=chunking_strategy, subset=subset)
+    build_index(subset=subset)
 
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--strategy", default="semantic", choices=["semantic", "sliding"],
-        help="Chunking strategy (default: semantic)"
-    )
-    parser.add_argument(
         "--subset", type=int, default=None, metavar="N",
         help="Index only N pages (always includes query ground-truth pages) "
              "for fast local iteration. Omit for the full submission build."
     )
     args = parser.parse_args()
-    build_offline_index(chunking_strategy=args.strategy, subset=args.subset)
+    build_offline_index(subset=args.subset)
     print("Index built under artifacts/. Run: python scripts/eval_public.py")
