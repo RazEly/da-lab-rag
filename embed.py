@@ -9,6 +9,9 @@ from sentence_transformers import SentenceTransformer
 
 from utils import EMBEDDING_MODEL_NAME
 
+BATCH_SIZE_TEXTS = 512
+BATCH_SIZE_QUERIES = 64
+
 _model: SentenceTransformer | None = None
 
 
@@ -22,7 +25,7 @@ def get_model() -> SentenceTransformer:
 def embed_texts(
     texts: Sequence[str],
     *,
-    batch_size: int = 512,
+    batch_size: int = BATCH_SIZE_TEXTS,
     show_progress: bool = True,
 ) -> np.ndarray:
     """Return L2-normalized embeddings, shape (n, dim)."""
@@ -39,5 +42,7 @@ def embed_texts(
     return np.asarray(vectors, dtype=np.float32)
 
 
-def embed_queries(queries: List[str], *, batch_size: int = 64) -> np.ndarray:
+def embed_queries(
+    queries: List[str], *, batch_size: int = BATCH_SIZE_QUERIES
+) -> np.ndarray:
     return embed_texts(queries, batch_size=batch_size, show_progress=False)

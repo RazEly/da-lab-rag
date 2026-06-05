@@ -49,12 +49,15 @@ def build_index(
     entries_dir: Optional[Path] = None,
     artifacts_dir: Optional[Path] = None,
     chunking_strategy: str = "semantic",
+    prepend: str = "title_section",
     subset: Optional[int] = None,
 ) -> Tuple[np.ndarray, List[int]]:
     """
     Embed the full corpus and persist artifacts.
 
-    chunking_strategy: ``"semantic"`` (default) or ``"sliding"`` (fixed token window).
+    chunking_strategy: ``"semantic"`` | ``"sliding"`` | ``"sliding_para"`` |
+        ``"sliding_overlap"``.
+    prepend: embedded-text policy ``"none"`` | ``"title"`` | ``"title_section"``.
     subset: if set, index only N pages (GT-inclusive) for fast local iteration.
             Leave None for the real submission build.
     Returns (vectors, page_ids) where row i corresponds to page_ids[i].
@@ -65,7 +68,9 @@ def build_index(
     print(f"[index] loaded {len(records)} records")
     if subset is not None:
         records = _select_subset(records, subset)
-    chunks: List[Chunk] = chunk_corpus(records, show_progress=True, strategy=chunking_strategy)
+    chunks: List[Chunk] = chunk_corpus(
+        records, show_progress=True, strategy=chunking_strategy, prepend=prepend
+    )
     texts = [c.text for c in chunks]
     print(f"[index] embedding {len(texts)} chunk texts...")
     vectors = embed_texts(texts, show_progress=True)
@@ -77,6 +82,8 @@ def build_index(
         "page_ids": page_ids,
         "chunk_ids": [c.chunk_id for c in chunks],
         "page_titles": [c.title for c in chunks],
+        "chunk_sections": [c.section for c in chunks],
+        "chunk_section_numbers": [c.section_number for c in chunks],
         "chunk_word_counts": [len(c.text.split()) for c in chunks],
         "model": "sentence-transformers/all-MiniLM-L6-v2",
         "num_vectors": len(page_ids),
