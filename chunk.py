@@ -17,46 +17,16 @@ from utils import normalize_page_id
 MAX_WORDS = 120
 SLIDING_FALLBACK_OVERLAP = 40  # words
 
-# AD years 1000-2099; word boundaries prevent partial matches inside longer numbers
-_YEAR_RE = re.compile(r"\b((?:1[0-9]|20)\d{2})\b")
-# BC/BCE years stored as negative ints: "300 BC" -> -300, "44 BCE" -> -44
-_BC_YEAR_RE = re.compile(r"\b(\d{1,4})\s+BC(?:E)?\b", re.IGNORECASE)
-# Optional-suffix form covers full names, 3-letter abbrs, and "Sept" in one pattern
-_MONTH_RE = re.compile(
-    r"\b("
-    r"Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May"
-    r"|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?"
-    r"|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?"
-    r")\b",
-    re.IGNORECASE,
-)
-_MONTH_NORM: Dict[str, str] = {
-    "jan": "January",
-    "feb": "February",
-    "mar": "March",
-    "apr": "April",
-    "may": "May",
-    "jun": "June",
-    "jul": "July",
-    "aug": "August",
-    "sep": "September",
-    "oct": "October",
-    "nov": "November",
-    "dec": "December",
-}
+# Any run of digits; word boundaries avoid splitting numbers embedded in words.
+_NUMBER_RE = re.compile(r"\b\d+\b")
 
 _SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'(])")
 _PARA_SPLIT_RE = re.compile(r"\n\s*\n+")
 
 
-def extract_years(text: str) -> Set[int]:
-    ad = {int(m) for m in _YEAR_RE.findall(text)}
-    bc = {-int(m) for m in _BC_YEAR_RE.findall(text)}
-    return ad | bc
-
-
-def extract_months(text: str) -> Set[str]:
-    return {_MONTH_NORM[m[:3].lower()] for m in _MONTH_RE.findall(text)}
+def extract_numbers(text: str) -> Set[int]:
+    """All integer numbers in `text` (powers query-time number pre/post-filter)."""
+    return {int(m) for m in _NUMBER_RE.findall(text)}
 
 
 @dataclass
@@ -67,8 +37,7 @@ class Chunk:
     title: str = ""
     section: str = ""  # recovered section heading; "" = page lead/intro
     section_number: int = 0  # 0 = lead; 1,2,... in document order per page
-    years: Set[int] = field(default_factory=set)
-    months: Set[str] = field(default_factory=set)
+    numbers: Set[int] = field(default_factory=set)
 
 
 def _count_words(text: str) -> int:
@@ -141,7 +110,7 @@ def _make_chunks(
     """Wrap chunk bodies as ``Chunk``s with ``[title] body`` embedded text.
 
     Title is prepended to the dense/BM25 text of every chunk. Metadata
-    (years/months) is extracted from the body alone.
+    (numbers) is extracted from the body alone.
     """
     chunks: List[Chunk] = []
     for i, body in enumerate(bodies):
@@ -157,8 +126,7 @@ def _make_chunks(
                 title=title,
                 section=sec_name,
                 section_number=sec_num,
-                years=extract_years(body),
-                months=extract_months(body),
+                numbers=extract_numbers(body),
             )
         )
     return chunks

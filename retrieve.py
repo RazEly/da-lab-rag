@@ -2,16 +2,29 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import numpy as np
 
 from bm25 import load_bm25
 from bm25 import score_batch as bm25_score_batch
 from embed import embed_queries
-from index import FAISS_INDEX_NAME, load_index
+from index import FAISS_INDEX_NAME, load_index, load_meta
 from utils import ARTIFACTS_DIR, K_EVAL
+
+# Number pre-filter: if a query names a number, restrict the candidate pool to
+# pages having >=1 chunk whose extracted metadata contains that number.
+# Toggle off to A/B. Empty result after filtering -> fall back to unfiltered
+# (an over-eager filter that wipes the pool is worse than no filter).
+ENABLE_NUMBER_FILTER = True
+# "pre"  : restrict the candidate pool before ranking/RRF (non-matching pages
+#          never compete). "post": rank the full corpus, then drop non-matching
+#          pages from the final list. Pre is strictly stronger when the number
+#          signal is trustworthy; post is safer when metadata recall is partial.
+FILTER_MODE = "post"
+_QUERY_NUMBER_RE = re.compile(r"\b\d+\b")
 
 # S6: max+mean blend alpha over chunk scores per page. 1.0=pure max, 0.0=pure mean.
 # CRITICAL (2026-06-05, full 27k): the two retrievers want OPPOSITE aggregation.
@@ -100,17 +113,57 @@ def _minmax_topk(scores: np.ndarray, k: int) -> np.ndarray:
     return out
 
 
+def _extract_query_numbers(query: str) -> Set[int]:
+    """All integer numbers mentioned in a query (matches stored metadata)."""
+    return {int(m) for m in _QUERY_NUMBER_RE.findall(query)}
+
+
+def _build_page_numbers(
+    page_ids: List[int], chunk_numbers: List[List[int]]
+) -> Dict[int, Set[int]]:
+    """page_id → union of numbers across all its chunks (row-aligned inputs)."""
+    page_numbers: Dict[int, Set[int]] = {}
+    for pid, nums in zip(page_ids, chunk_numbers):
+        if nums:
+            page_numbers.setdefault(pid, set()).update(nums)
+    return page_numbers
+
+
+def _allowed_pages_for_query(
+    query: str, page_numbers: Dict[int, Set[int]]
+) -> Optional[Set[int]]:
+    """
+    Pages allowed for `query` under the number filter, or None for no filtering.
+
+    None means "don't filter" — either the query names no number, or filtering
+    would empty the pool (no page carries the queried number); both fall back to
+    the full corpus rather than returning nothing.
+    """
+    nums = _extract_query_numbers(query)
+    if not nums:
+        return None
+    allowed = {pid for pid, pn in page_numbers.items() if pn & nums}
+    return allowed or None
+
+
 def _aggregate_page_scores(
     chunk_scores: np.ndarray,
     page_ids: List[int],
     top_k: int,
     alpha: float,
     agg_topn: int = AGG_TOPN,
+    allowed_pages: Optional[Set[int]] = None,
 ) -> List[int]:
-    """Max+mean blend aggregation over chunk scores → ranked page_id list."""
+    """Max+mean blend aggregation over chunk scores → ranked page_id list.
+
+    allowed_pages: if set, chunks on pages outside this set are dropped before
+    aggregation (number pre-filter). None = no filtering.
+    """
     page_chunks: Dict[int, List[float]] = {}
     for idx, score in enumerate(chunk_scores):
         pid = page_ids[idx]
+        if allowed_pages is not None and pid not in allowed_pages:
+            continue
         page_chunks.setdefault(pid, []).append(float(score))
 
     page_scores: Dict[int, float] = {}
@@ -148,6 +201,14 @@ def search_batch(
     bm25 = load_bm25(root)
     query_vectors = embed_queries(queries)
 
+    # Number filter: build page→numbers map once. Disabled if artifacts predate
+    # the chunk_numbers field (stale build) so old indexes keep working unchanged.
+    page_numbers: Optional[Dict[int, Set[int]]] = None
+    if ENABLE_NUMBER_FILTER:
+        chunk_numbers = load_meta(root).get("chunk_numbers")
+        if chunk_numbers is not None:
+            page_numbers = _build_page_numbers(page_ids, chunk_numbers)
+
     if query_vectors.size == 0:
         return [[] for _ in queries]
 
@@ -171,6 +232,14 @@ def search_batch(
         # Immune to dense/BM25 score-scale mismatch (the cause of blend collapse).
         results: List[List[int]] = []
         for qi in range(len(queries)):
+            allowed = (
+                _allowed_pages_for_query(queries[qi], page_numbers)
+                if page_numbers is not None
+                else None
+            )
+            # pre-filter applies inside per-retriever aggregation; post-filter
+            # leaves ranking untouched and prunes the fused list afterwards.
+            pre = allowed if FILTER_MODE == "pre" else None
             rankings: List[List[int]] = []
             if INCLUDE_DENSE:
                 rankings.append(
@@ -180,6 +249,7 @@ def search_batch(
                         RRF_DEPTH,
                         DENSE_ALPHA,
                         DENSE_TOPN,
+                        allowed_pages=pre,
                     )
                 )
             if INCLUDE_SPARSE:
@@ -190,9 +260,17 @@ def search_batch(
                         RRF_DEPTH,
                         SPARSE_ALPHA,
                         SPARSE_TOPN,
+                        allowed_pages=pre,
                     )
                 )
-            results.append(_rrf(rankings, RRF_K, top_k))
+            if FILTER_MODE == "post" and allowed is not None:
+                # Fuse the full pool, then keep only year-matching pages.
+                # Fall back to the unfiltered order if the filter empties it.
+                fused = _rrf(rankings, RRF_K, len(page_ids))
+                kept = [p for p in fused if p in allowed]
+                results.append((kept or fused)[:top_k])
+            else:
+                results.append(_rrf(rankings, RRF_K, top_k))
         return results
 
     # Legacy "blend": normalise each retriever over its own top-TOPK_NORM
@@ -201,4 +279,22 @@ def search_batch(
     sparse_norm = _minmax_topk(sparse_scores, TOPK_NORM)
     final = (1.0 - bm25_weight) * dense_norm + bm25_weight * sparse_norm
 
-    return [_aggregate_page_scores(row, page_ids, top_k, alpha) for row in final]
+    out: List[List[int]] = []
+    for qi, row in enumerate(final):
+        allowed = (
+            _allowed_pages_for_query(queries[qi], page_numbers)
+            if page_numbers is not None
+            else None
+        )
+        pre = allowed if FILTER_MODE == "pre" else None
+        if FILTER_MODE == "post" and allowed is not None:
+            ranked = _aggregate_page_scores(row, page_ids, len(page_ids), alpha)
+            kept = [p for p in ranked if p in allowed]
+            out.append((kept or ranked)[:top_k])
+        else:
+            out.append(
+                _aggregate_page_scores(
+                    row, page_ids, top_k, alpha, allowed_pages=pre
+                )
+            )
+    return out

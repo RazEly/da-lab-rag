@@ -78,6 +78,9 @@ def build_index(
         "chunk_sections": [c.section for c in chunks],
         "chunk_section_numbers": [c.section_number for c in chunks],
         "chunk_word_counts": [len(c.text.split()) for c in chunks],
+        # Per-chunk extracted numbers (sorted int lists).
+        # Powers query-time number pre/post-filtering in retrieve.py.
+        "chunk_numbers": [sorted(c.numbers) for c in chunks],
         "model": "sentence-transformers/all-MiniLM-L6-v2",
         "num_vectors": len(page_ids),
     }
