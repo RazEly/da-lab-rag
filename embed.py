@@ -9,7 +9,7 @@ from sentence_transformers import SentenceTransformer
 
 from utils import EMBEDDING_MODEL_NAME
 
-BATCH_SIZE_TEXTS = 512
+BATCH_SIZE_TEXTS = 1024
 BATCH_SIZE_QUERIES = 64
 
 _model: SentenceTransformer | None = None
