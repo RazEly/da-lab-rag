@@ -14,14 +14,22 @@ from index import FAISS_INDEX_NAME, load_index
 from utils import ARTIFACTS_DIR, K_EVAL
 
 # S6: max+mean blend alpha over chunk scores per page. 1.0=pure max, 0.0=pure mean.
-# Tuned on public subset: mean-heavy over many chunks rewards pages consistently
-# on-topic (long GT articles) instead of one lucky chunk. Lifted dense-only
-# 0.3555 -> 0.4213, fused -> 0.4351. Old (0.7, top3) hobbled both retrievers.
-ALPHA = 0.2
+# CRITICAL (2026-06-05, full 27k): the two retrievers want OPPOSITE aggregation.
+#   Dense  : mean-heavy (alpha=0.2, topn=30) — gold is a long article whose chunks
+#            are uniformly on-topic; max alone picks one lucky chunk and buries it.
+#   BM25   : pure max  (alpha=1.0, topn=1)   — exact-match signal lives in ONE chunk;
+#            averaging dilutes the rank-1 hit.
+# Forcing a single ALPHA on both (old behaviour) starved BM25, the stronger leg.
+# Per-retriever agg + RRF k=60 lifted full-corpus NDCG@10 0.155 -> 0.275.
+ALPHA = 0.2  # retained for the legacy "blend" path / external callers
+AGG_TOPN = 30  # default mean-term cap (legacy "blend" path / external callers)
 
-# Top chunks per page averaged in the mean term (max term always uses #1).
-# ~30 ≈ "all chunks" on the tuning plateau; capped for speed.
-AGG_TOPN = 30
+# Fused-optimal agg (full 27k, 2026-06-05 sweep). Differs from each retriever's
+# SOLO best: once RRF-fused, dense wants pure mean (max term overfits one chunk)
+# and BM25 a light mean. Plateau is flat over dense topn 50-100 / k 60-100, so
+# these are picked conservatively against the 50-query public set. NDCG@10 0.316.
+DENSE_ALPHA, DENSE_TOPN = 0.0, 50
+SPARSE_ALPHA, SPARSE_TOPN = 0.8, 3
 
 # Fusion mode: "rrf" (rank fusion) | "blend" (legacy convex score blend).
 # Score-blend monotonically degraded to BM25-only because min-max stretches MiniLM's
@@ -38,7 +46,7 @@ INCLUDE_SPARSE = True
 
 # --- legacy "blend" mode only ---
 # S2: BM25 hybrid weight (BM25 share of final score).
-BM25_WEIGHT = 0.5
+BM25_WEIGHT = 1.0
 # Normalization candidate pool: min/max computed over top-K only to avoid
 # outlier compression from non-retrieved documents setting the range.
 TOPK_NORM = 1000
@@ -97,6 +105,7 @@ def _aggregate_page_scores(
     page_ids: List[int],
     top_k: int,
     alpha: float,
+    agg_topn: int = AGG_TOPN,
 ) -> List[int]:
     """Max+mean blend aggregation over chunk scores → ranked page_id list."""
     page_chunks: Dict[int, List[float]] = {}
@@ -107,8 +116,10 @@ def _aggregate_page_scores(
     page_scores: Dict[int, float] = {}
     for pid, chunk_list in page_chunks.items():
         ranked_chunks = sorted(chunk_list, reverse=True)
-        topn = ranked_chunks[:AGG_TOPN]
-        page_scores[pid] = alpha * ranked_chunks[0] + (1.0 - alpha) * (sum(topn) / len(topn))
+        topn = ranked_chunks[:agg_topn]
+        page_scores[pid] = alpha * ranked_chunks[0] + (1.0 - alpha) * (
+            sum(topn) / len(topn)
+        )
 
     ranked = sorted(page_scores, key=page_scores.__getitem__, reverse=True)
     return ranked[:top_k]
@@ -163,12 +174,22 @@ def search_batch(
             rankings: List[List[int]] = []
             if INCLUDE_DENSE:
                 rankings.append(
-                    _aggregate_page_scores(dense_scores[qi], page_ids, RRF_DEPTH, alpha)
+                    _aggregate_page_scores(
+                        dense_scores[qi],
+                        page_ids,
+                        RRF_DEPTH,
+                        DENSE_ALPHA,
+                        DENSE_TOPN,
+                    )
                 )
             if INCLUDE_SPARSE:
                 rankings.append(
                     _aggregate_page_scores(
-                        sparse_scores[qi], page_ids, RRF_DEPTH, alpha
+                        sparse_scores[qi],
+                        page_ids,
+                        RRF_DEPTH,
+                        SPARSE_ALPHA,
+                        SPARSE_TOPN,
                     )
                 )
             results.append(_rrf(rankings, RRF_K, top_k))
