@@ -37,12 +37,17 @@ _QUERY_NUMBER_RE = re.compile(r"\b\d+\b")
 ALPHA = 0.2  # retained for the legacy "blend" path / external callers
 AGG_TOPN = 30  # default mean-term cap (legacy "blend" path / external callers)
 
-# Fused-optimal agg (full 27k, 2026-06-05 sweep). Differs from each retriever's
-# SOLO best: once RRF-fused, dense wants pure mean (max term overfits one chunk)
-# and BM25 a light mean. Plateau is flat over dense topn 50-100 / k 60-100, so
-# these are picked conservatively against the 50-query public set. NDCG@10 0.316.
-DENSE_ALPHA, DENSE_TOPN = 0.0, 50
-SPARSE_ALPHA, SPARSE_TOPN = 0.8, 3
+# Fused-optimal agg (full 27k, 2026-06-06 sweep). Differs from each retriever's
+# SOLO best: once RRF-fused, BOTH retrievers want mean-heavy aggregation.
+#   Dense : pure mean (alpha=0.0), topn 50-100 (flat plateau, max term overfits one chunk).
+#   BM25  : near-pure mean (alpha=0.1), topn~12 — REVERSED from the old "pure max 1.0/1"
+#           solo belief. Once RRF-fused, a page with SEVERAL on-topic chunks should
+#           outrank a one-lucky-keyword page (helps Type-B multi-page queries).
+# Plateau flat over sparse alpha 0.0-0.2 / topn 12-20 (all ~0.36-0.37), so 0.1/12 is
+# the peak but not an overfit spike. Tuned on 50 public queries. NDCG@10 0.3695
+# (up from 0.3330 at the old 0.8/3; filter=off baseline is 0.3161).
+DENSE_ALPHA, DENSE_TOPN = 0.0, 100
+SPARSE_ALPHA, SPARSE_TOPN = 0.1, 12
 
 # Fusion mode: "rrf" (rank fusion) | "blend" (legacy convex score blend).
 # Score-blend monotonically degraded to BM25-only because min-max stretches MiniLM's
@@ -59,7 +64,7 @@ INCLUDE_SPARSE = True
 
 # --- legacy "blend" mode only ---
 # S2: BM25 hybrid weight (BM25 share of final score).
-BM25_WEIGHT = 1.0
+BM25_WEIGHT = 0.0
 # Normalization candidate pool: min/max computed over top-K only to avoid
 # outlier compression from non-retrieved documents setting the range.
 TOPK_NORM = 1000
@@ -293,8 +298,6 @@ def search_batch(
             out.append((kept or ranked)[:top_k])
         else:
             out.append(
-                _aggregate_page_scores(
-                    row, page_ids, top_k, alpha, allowed_pages=pre
-                )
+                _aggregate_page_scores(row, page_ids, top_k, alpha, allowed_pages=pre)
             )
     return out
