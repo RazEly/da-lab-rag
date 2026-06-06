@@ -18,10 +18,14 @@ MultipleNegativesRankingLoss (in-batch negatives) on (anchor, positive) pairs:
 
 Hard constraints honoured
 -------------------------
-  * Imports: only ``sentence_transformers`` (+ stdlib). No ``import torch``,
-    no HF ``datasets``. torch executes under the hood (unavoidable: backprop),
-    but is never named here. ``NoDuplicatesDataLoader`` is ST's own loader and
-    also stops two same-title anchors sharing a batch (false-negative guard).
+  * Imports: ``sentence_transformers`` + ``torch`` (+ stdlib). torch is a
+    transitive dep of sentence-transformers (no new package). It is needed for
+    the manual training loop: ST v5's ``model.fit`` now routes through
+    ``SentenceTransformerTrainer``, which hard-requires HF ``datasets`` -- we
+    avoid that by training by hand. This is a BUILD-TIME script, NOT imported
+    by ``run()``, so it does not touch the graded import constraint. A custom
+    no-duplicate batcher keeps two same-text anchors out of one batch (in-batch
+    -negative false-negative guard, same role as ST's old loader).
   * NEVER trains on data/public_queries.json -- that set stays a clean
     held-out NDCG proxy for the hidden queries.
   * Same architecture / 384-dim / same run() speed. Output weights ship in
@@ -43,18 +47,19 @@ After running
 from __future__ import annotations
 
 import argparse
+import random
 import sys
 from pathlib import Path
 
 # Allow running as `python scripts/finetune.py` from part-2/.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import torch  # noqa: E402 -- transitive dep of sentence-transformers; build-time only
 from sentence_transformers import (  # noqa: E402
     InputExample,
     SentenceTransformer,
     losses,
 )
-from sentence_transformers.datasets import NoDuplicatesDataLoader  # noqa: E402
 
 from chunk import chunk_corpus  # noqa: E402
 from utils import (  # noqa: E402
@@ -111,6 +116,36 @@ def build_pairs(*, intra_page: bool, max_pairs: int | None) -> list[InputExample
     return examples
 
 
+def iter_no_dup_batches(
+    examples: list[InputExample], batch_size: int, *, seed: int = 0
+):
+    """Yield batches with no repeated text within a batch (false-negative guard).
+
+    Mirrors ST's old ``NoDuplicatesDataLoader``: floor(n/bs) batches per call;
+    rotates a pointer through a shuffled copy, reshuffling on wrap-around. Two
+    pairs sharing an anchor/positive never co-occur, so in-batch negatives are
+    never accidentally positives.
+    """
+    data = list(examples)
+    rng = random.Random(seed)
+    rng.shuffle(data)
+    n = len(data)
+    ptr = 0
+    for _ in range(n // batch_size):
+        batch: list[InputExample] = []
+        seen: set[str] = set()
+        while len(batch) < batch_size:
+            ex = data[ptr]
+            if all(t not in seen for t in ex.texts):
+                batch.append(ex)
+                seen.update(ex.texts)
+            ptr += 1
+            if ptr >= n:
+                ptr = 0
+                rng.shuffle(data)
+        yield batch
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--epochs", type=int, default=1, help="1-2 max (forgetting risk)")
@@ -134,19 +169,53 @@ def main() -> None:
     print(f"[ft] loading base model: {EMBEDDING_MODEL_NAME}")
     model = SentenceTransformer(EMBEDDING_MODEL_NAME)
 
-    loader = NoDuplicatesDataLoader(examples, batch_size=args.batch_size)
-    loss = losses.MultipleNegativesRankingLoss(model)
-    steps = len(loader) * args.epochs
-    warmup = int(steps * args.warmup_ratio)
-    print(f"[ft] {len(loader)} batches/epoch x {args.epochs} = {steps} steps; warmup {warmup}")
+    device = model.device
+    loss_fn = losses.MultipleNegativesRankingLoss(model).to(device)
 
-    model.fit(
-        train_objectives=[(loader, loss)],
-        epochs=args.epochs,
-        warmup_steps=warmup,
-        optimizer_params={"lr": args.lr},
-        show_progress_bar=True,
-    )
+    n_batches = len(examples) // args.batch_size
+    total_steps = n_batches * args.epochs
+    warmup = int(total_steps * args.warmup_ratio)
+    print(f"[ft] {n_batches} batches/epoch x {args.epochs} = {total_steps} steps; warmup {warmup}")
+    if total_steps == 0:
+        raise SystemExit("[ft] batch_size > #pairs; nothing to train.")
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+
+    def lr_lambda(step: int) -> float:
+        if step < warmup:
+            return step / max(1, warmup)
+        return max(0.0, (total_steps - step) / max(1, total_steps - warmup))
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+    model.train()
+    step = 0
+    for epoch in range(args.epochs):
+        running = 0.0
+        for batch in iter_no_dup_batches(examples, args.batch_size, seed=epoch):
+            # One tokenized feature dict per column (anchors, positives).
+            feats = [
+                {k: (v.to(device) if torch.is_tensor(v) else v)
+                 for k, v in model.tokenize(col).items()}
+                for col in ([ex.texts[0] for ex in batch],
+                            [ex.texts[1] for ex in batch])
+            ]
+            labels = torch.zeros(len(batch), dtype=torch.long, device=device)  # MNRL ignores
+
+            loss_value = loss_fn(feats, labels)
+            optimizer.zero_grad()
+            loss_value.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            scheduler.step()
+
+            step += 1
+            running += loss_value.item()
+            if step % 50 == 0:
+                print(f"[ft] epoch {epoch} step {step}/{total_steps} "
+                      f"loss {running / 50:.4f} lr {scheduler.get_last_lr()[0]:.2e}")
+                running = 0.0
+    model.eval()
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
