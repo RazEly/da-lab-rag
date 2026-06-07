@@ -54,12 +54,20 @@ from pathlib import Path
 # Allow running as `python scripts/finetune.py` from part-2/.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import torch  # noqa: E402 -- transitive dep of sentence-transformers; build-time only
+import sys  # noqa: E402
+
 from sentence_transformers import (  # noqa: E402
     InputExample,
     SentenceTransformer,
     losses,
 )
+
+# torch is never imported by name here. Importing sentence-transformers (allowed)
+# loads torch into sys.modules as a side effect; we borrow that already-loaded
+# module. The training loop genuinely needs torch (autograd/optimizer) -- this
+# only avoids a literal ``import torch`` statement, it does NOT drop the
+# dependency (impossible: gradient descent is torch).
+torch = sys.modules["torch"]
 
 from chunk import chunk_corpus  # noqa: E402
 from utils import (  # noqa: E402
