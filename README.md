@@ -154,3 +154,28 @@ python eval_public_retrieval.py        # pool recall/MRR — diagnoses WHY a cha
    public queries, so re-confirm the plateau is still flat before trusting it.
 4. **Multi-granularity** (sentence + paragraph indexes, RRF-merged) — only if 1–3
    plateau; it needs a rebuild and grows the artifact.
+
+## Validation and public error analysis
+
+We added a lightweight validation and diagnostics workflow for Section B.
+
+`validate_submission.py` checks that the required prebuilt artifacts are present, that the vector artifact is a real NumPy matrix rather than a Git LFS pointer, and that `run(queries)` returns valid top-10 page ID lists.
+
+`analyze_public_errors.py` computes per-query NDCG@10, first relevant rank, relevant page IDs, and the system's returned top-10 page IDs. This helped identify whether weak cases were caused by retrieval failure or by ranking/reranking errors.
+
+### Public baseline
+
+| Metric | Value |
+|---|---:|
+| Public queries | 29 |
+| Mean NDCG@10 | 0.5203 |
+| Query phase time | 37.83s |
+| Recall@10 | 0.6234 |
+| Recall@50 | 0.8548 |
+| Recall@100 | 0.9166 |
+| Hit@100 | 1.0000 |
+| MRR@100 | 0.5141 |
+| First relevant rank | median 2, p90 12 |
+
+The diagnostics suggest that the system usually retrieves relevant pages somewhere in the candidate pool, but some relevant pages are not ranked high enough in the final top 10. Therefore, the main opportunity for improvement is reranking rather than rebuilding the embedding index.
+
