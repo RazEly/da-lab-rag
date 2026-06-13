@@ -1,0 +1,30 @@
+query_id,query,ndcg_at_10,first_relevant_rank,relevant_page_ids,top10_returned
+q_public_7,When did automated assembly lines modernize a factory decades after the company was founded?,0.0,,33775 34690 56456,7762 40201 15367 10249 7041 12699 31602 4114 1146 5731
+q_public_10,Who founded a youth basketball foundation after retiring to a hometown arena city?,0.0,,26879 32322,44461 37272 27627 19684 8261 36551 10052 14443 22890 2614
+q_public_22,"How do a lead researcher's career, an institute's field trials, and graduate teaching of a method connect?",0.0,,2728 25172 27139 33570 43973 48438,25524 54965 49892 26833 17994 16984 869 19552 10332 10005
+q_public_27,"How do a CEO's agreements, a company's research division, and overseas revenue growth connect?",0.0,,4114 5731 7041 17966 34448 39400 45012,56829 5681 52234 22297 12699 17930 53419 10249 24786 40201
+q_public_28,Who was the on-court leader during a championship year that also saw a commemorative banner raised?,0.0,,21584 28542 45655 54465,27627 17309 14455 51300 36551 43256 8261 44825 49556 31064
+q_public_17,"What links a captain's finals performance, his club's rebuild, and a named home arena?",0.129875,9,10052 19684 22668 26564 28865 29682 32656 36551 47196 51300,28542 21584 8261 54465 17309 14455 26879 427 19684 22668
+q_public_18,Which diplomatic settlement involved neutral observers and a joint commission chair?,0.158871,5,7393 11065 11549 13762 15413 18759 23248 42062 49441,9172 11196 3267 52154 42062 3852 36992 21400 38084 13762
+q_public_19,"What can be learned about a city's economy, geography, and transport network together?",0.188279,3,4740 11105 15135 40903 41307 44025 44582 48603 50630,12115 51114 15135 31729 21161 36021 5391 13430 11105 13372
+q_public_6,Where did urban planners redesign a riverfront for festivals in 1972?,0.218407,6,5251 50923,44582 48603 19661 37226 19401 5251 37855 4740 40903 55142
+q_public_13,Which executive introduced cooperative profit-sharing at a maritime logistics firm?,0.289065,10,5045,35560 4065 53419 40201 10249 2046 22297 5444 56456 5045
+q_public_24,Which firm expanded from harbor crane components to international service contracts?,0.312026,2,12699 31602 35560 40201 53419,34448 53419 36503 4114 34690 45012 46162 7041 54485 40201
+q_public_5,Who negotiated overseas distribution deals during a company's international expansion?,0.315465,8,4065,5444 56829 35560 13449 25273 53419 5045 4065 24786 42737
+q_public_20,"What links profit-sharing labor policy, alloy research partnerships, and spin-off software products?",0.33916,1,3327 3481 3511 36503 37655,37655 35948 53419 24786 31602 56456 40201 13449 45012 10249
+q_public_23,"What links humidity-controlled experiments, bridge monitoring applications, and a patent pool?",0.47479,1,2522 6098 7026 8722 13638 18779 31510 33315 34028 36881 37066 37542,13638 45724 34028 149 50794 6098 1904 43973 2522 14267
+q_public_21,Which population center combines cold-water fisheries exports with sister-city training exchanges?,0.482476,4,37226 37855,11105 24372 55142 37226 44025 37855 40903 50630 13249 19661
+q_public_11,Which city hosts light commuter rail and a small regional airport on a fjord-lined coast?,0.5,3,13249,54228 31606 13249 4646 38426 5251 11105 6286 36861 36021
+q_public_3,Which physicist's team improved stability over thermal imaging pipelines two years before publication?,0.610546,1,5508 26566 42955,5508 44664 8722 44518 45160 22006 50794 16195 42955 6098
+q_public_0,Who was the point guard that won a seven-game finals series in the 1820s?,0.63093,2,20263,16735 20263 36551 51300 44461 30087 19684 32322 4418 8261
+q_public_2,"What river delta municipality has about 1,456,779 residents?",0.63093,2,25051,50923 25051 19661 37392 19579 47988 37226 32378 28779 37021
+q_public_12,Who led the group that published reproducible laboratory results on stress imaging through harmonic vibration analysis?,0.63093,2,1904,45160 1904 31510 22006 8722 33315 21507 44518 17672 13638
+q_public_14,Where was the championship clinched in a Memorial Arena game?,0.63093,2,27627,22508 27627 427 44461 6771 28542 40019 47196 3305 3905
+q_public_15,Who led the group that published reproducible laboratory results on phase-sensitive radiometry in orbital configurations?,0.63093,2,14901,33315 14901 50946 31510 43574 37542 16195 22006 2522 8722
+q_public_4,Which franchise player averaged 24 points in the last two games of a title series?,0.671386,1,2614 3905 22890,2614 16735 19684 22890 49556 31400 22508 22668 6983 8579
+q_public_26,Which population center combines shipbuilding exports with sister-city training exchanges?,0.671386,1,19401 36021 36861,19401 21801 26708 36861 4646 54228 13249 24372 25051 15135
+q_public_1,Who captained the Los Angeles basketball franchise when they won the 1987 championship?,1.0,1,9112,9112 18213 22093 36753 22312 16899 55029 27170 27169 13894
+q_public_8,Who chaired preliminary peace talks the year before a September 1958 signing?,1.0,1,37638,37638 30592 13765 51255 1291 22165 13808 42636 25408 8182
+q_public_9,What agreement established trade corridors and a joint commission in 1965?,1.0,1,3267,3267 12831 14604 9578 39767 9974 5199 30592 49147 24468
+q_public_16,Who served as negotiator for a republic that reopened overland routes after 1995?,1.0,1,3310,3310 51928 12157 7041 24899 39764 4114 15950 38893 30981
+q_public_25,"How did negotiations, a signed treaty, and post-war demobilization reports fit together in 1836?",1.0,1,7997 18097 26610,26610 18097 7997 4815 9114 10824 1623 15980 25457 38711
