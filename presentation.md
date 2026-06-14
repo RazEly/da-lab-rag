@@ -9,8 +9,21 @@
 > _[PLACEHOLDER: block diagram — corpus → chunk (paragraphs)→ embed → dense index, embed -> bm25 index (offline) ‖
 > query → dense retrieval, query -> sparse retrieval -> rff -> retrieve]_
 
-- NDCG@10 final score:
--
+**Headline (29 public queries, full 27k corpus, committed artifacts — no rebuild):**
+
+| metric | value |
+|---|---|
+| **mean NDCG@10** | **0.5428** |
+| recall@10 / @50 / @100 | 0.632 / 0.856 / 0.917 |
+| mrr@100 | 0.596 |
+| first-relevant rank | median 2, p90 12, found 100% |
+| query time (incl. artifact load) | ~55 s < 60 s wall |
+| corpus / chunks | 27,068 pages / 576,321 chunks |
+
+> Reorder headroom: recall@100 ≈ 0.917 vs NDCG@10 ≈ 0.543 — a relevant page is in
+> the top-100 almost always; the gap is final ordering, not recall.
+> (figures: `analysis/figures/h_per_query_ndcg`, `i_first_rel_cdf`, `j_latency`;
+> raw: `analysis/results/headline.json`)
 
 ## Slide 2 — chunk.py
 
@@ -19,8 +32,18 @@
 - proved to be faster and more effective than semantic embedding.
 - metadata saved: exact numbers, titles, paragraphs.
 
-> _[PLACEHOLDER: comparison between dense-only retrieval recall@k results with different MIN_WORDS parameter,
-> comparison between dense-only retrieval recall@k - vanilla vs. injected title vs. injected title + paragraph header]_
+**(A) chunk size — dense-only over MAX_WORDS** (figure: `analysis/figures/s2_maxwords`).
+Footnote: the slide's "MIN_WORDS" is `chunk.MAX_WORDS` — there is no MIN_WORDS knob.
+Dense-only NDCG@10 (GT-inclusive 6k-page subset, directional): MAX_WORDS **120 = 0.511**
+(best) vs 80 = 0.460, 160 = 0.485, 200 = 0.443. 120 ships; smaller over-fragments,
+larger truncates context. Chunk count falls 234k→85k across 80→200 (cost twin-axis).
+
+**(B) title / header injection — dense-only** (figure: `analysis/figures/s2_textmode`,
+incl. MAX_WORDS×mode grid). At MAX_WORDS=120: **`[title] body` = 0.511** (ships) >
+vanilla `body` = 0.495 > `[title] [section] body` = 0.493. Title injection helps;
+adding the recovered section header does **not** — the grid's best cell is 120×title.
+Both A and B cleared the §0.1 gate with **no change** (shipped settings already
+optimal); measured on subset (directional), never promoted off subset.
 
 ---
 
@@ -34,8 +57,18 @@
 
 - two steps: dense and sparse
 
-> _[PLACEHOLDER: grouped bar - (recall@k, ndcg@10) — dense-only vs BM25-only vs fused. before reranking]
->_[PLACEHOLDER: grouped bar — (recall@k, ndcg@10) - dense-only vs BM25-only vs fused. before reranking]
+**Hybrid fusion beats either leg** (figure: `analysis/figures/s5_retrievers`;
+first-stage pool, number filter off, shipped aggregation):
+
+| | recall@5 | recall@10 | recall@20 | NDCG@10 |
+|---|---|---|---|---|
+| dense-only | 0.41 | 0.52 | 0.62 | 0.390 |
+| bm25-only | 0.46 | 0.54 | 0.62 | 0.388 |
+| **fused** | **0.54** | **0.60** | **0.69** | **0.489** |
+
+Fused dominates on every metric — the legs recover different relevant pages
+(dense = semantic paraphrase, BM25 = exact-term), so the union lifts recall and
+NDCG together (recall@100 0.81/0.87 solo → **0.92** fused).
 ---
 
 ## Slide 6 — retrieve.py
@@ -46,6 +79,13 @@
   - Dense → **mean** (gold = long uniform article)
   - BM25 → **max-ish** (exact match in one chunk)
 - One shared setting starved BM25 → caused the original 0.155
+
+**Evidence** (figure: `analysis/figures/s6_aggregation`, solo NDCG@10 over alpha×topn):
+solo-optimal cells are **dense (alpha 0.0 = pure mean, topn 100)** and **BM25
+(alpha 0.75 = max-heavy, topn 100)** — opposite ends of the alpha axis, confirming
+the legs want different aggregation. Solo-optimal ≠ fused-optimal: the shipped pair
+**D(0.0/100) S(0.25/30)** gates higher fused (0.5428) than the solo-best pair fused
+(0.5182), so production is kept.
 
 ---
 
@@ -65,8 +105,29 @@
 - **BM25 IDF filter:** drop generic query terms (IDF < 4.0); keep discriminative ones
 - Adaptive fallback if filtering kills all signal
 
-> _[PLACEHOLDER: TODO: add appropriate graphics OR empirical findings by sweeping different settings / showcasing how important the RFF is]
-> _[PLACEHOLDER: line plot — NDCG@10 vs IDF threshold [1-5], plateau.]_
+**RRF vs score-blend, and RRF_K** (figure: `analysis/figures/s7_rrf`):
+
+| fusion | NDCG@10 |
+|---|---|
+| dense-only | 0.464 |
+| bm25-only | 0.449 |
+| min-max score-blend | 0.443 |
+| **RRF (shipped)** | **0.543** |
+
+RRF beats the normalized score-blend by **+0.10** — blending collapses on the
+dense/BM25 scale mismatch (cosine ∈ [−1,1] vs unbounded BM25 sums). **RRF_K sweep**
+{5,10,20,28,60,100,200} peaks at the 20–28 region (k28 = 0.5428) vs 0.5363 at k=60:
+a tighter k rewards pages both legs rank decently. **This sweep changed production
+`RRF_K` 60 → 28** (§0.1 gate, Δ+0.0065; re-verified eval+validate; see
+`analysis/results/CHANGELOG.md`).
+
+**BM25 IDF filter threshold** (figure: `analysis/figures/s7_idf`): NDCG@10 vs
+`BM25_QUERY_MIN_IDF` over [0..6] peaks sharply at **4.0 = 0.5428** (shipped); 0.0
+(no filter) = 0.530. Dropping generic low-IDF query terms is worth ~+0.013.
+
+**Number filter mode** (figure: `analysis/figures/s7_number_filter`): off = 0.489,
+pre = 0.542, **post = 0.5428** (shipped). Post edges pre and is safer when number
+metadata recall is partial; both far beat off.
 
 ---
 

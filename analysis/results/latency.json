@@ -1,0 +1,12 @@
+{
+  "runs_s": [
+    59.164406821131706,
+    51.0397780649364,
+    53.7063814997673
+  ],
+  "mean_s": 54.63685546194514,
+  "max_s": 59.164406821131706,
+  "wall_s": 60.0,
+  "n_queries": 29,
+  "note": "run() reloads artifacts each call (grader-equivalent)"
+}

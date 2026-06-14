@@ -64,7 +64,12 @@ BM25_FALLBACK_THRESHOLD: float = 15.0
 # RRF params: asymmetric depths (2026-06-13).
 # Dense=100 preserves semantic breadth; BM25=30 is tight enough that only
 # strong IDF-filtered matches compete (reduces noise from weak BM25 hits).
-RRF_K = 60  # was 28
+# RRF_K=28 (2026-06-14 analysis §0.1 gate, s7_rrf_ablation, full 27k / 29 public
+# queries): sweep {5,10,20,28,60,100,200} → NDCG@10 peaks at the 20–28 region
+# (k=20:0.5390, k=28:0.5428) and falls to 0.5363 at k=60. A smaller k sharpens the
+# top so a page ranked decently by BOTH legs outranks one leg's lucky #1. Δ+0.0065
+# over k=60, recall@100 unchanged (0.9174). Was 60.
+RRF_K = 28  # was 60
 RRF_DEPTH = 100  # dense depth
 SPARSE_RRF_DEPTH = (
     60  # was 25  # BM25 depth (tighter with IDF-filtered, high-quality top-25)
