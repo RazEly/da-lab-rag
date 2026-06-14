@@ -38,17 +38,17 @@ Per-step: candidate vs live production, change-if-better.
 - production: `filter_mode=post`
 - candidate:  `filter_mode=post`
 
-## A. chunk MAX_WORDS (slide 2) [index-affecting] — kept  (2026-06-14 18:59)
-
-- KEEP: ΔNDCG +0.0000 < 0.005
-- production: `MAX_WORDS=120 (dense-only)`
-- candidate:  `MAX_WORDS=120 (dense-only)`
-- note: dense-only basis; a pass flags full artifact rebuild before shipping
-
 ## B. text-mode × MAX_WORDS (slide 2) [index-affecting] — kept  (2026-06-14 18:59)
 
 - KEEP: ΔNDCG +0.0000 < 0.005
 - production: `120|title (dense-only)`
 - candidate:  `120|title (dense-only)`
 - note: dense-only joint grid; a pass flags full artifact rebuild
+
+## A. chunk MAX_WORDS (slide 2) [index-affecting] — kept  (2026-06-14 19:12)
+
+- KEEP: ΔNDCG +0.0000 < 0.005
+- production: `MAX_WORDS=120 (dense-only)`
+- candidate:  `MAX_WORDS=120 (dense-only)`
+- note: dense-only basis; a pass flags full artifact rebuild before shipping
 

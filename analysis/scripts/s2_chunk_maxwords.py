@@ -59,7 +59,8 @@ def plot(data: dict) -> None:
     import matplotlib.pyplot as plt
 
     PS.apply_style()
-    fig, ax = plt.subplots(figsize=(8, 4.8))
+    fig, (ax, axc) = plt.subplots(1, 2, figsize=(12, 4.6),
+                                  gridspec_kw={"width_ratios": [2, 1]})
     for i, mw in enumerate(data["maxwords"]):
         r = data["rows"][str(mw)]
         ys = [r[f"recall@{k}"] for k in data["ks"]]
@@ -68,16 +69,15 @@ def plot(data: dict) -> None:
                 lw=2.5 if mw == data["shipped"] else 1.5, label=lbl)
     ax.set_xscale("log"); ax.set_xticks(data["ks"]); ax.set_xticklabels(data["ks"])
     ax.set_xlabel("k"); ax.set_ylabel("dense-only recall@k")
-    scope = data.get("scope", "")
-    ax.set_title(f"Chunk MAX_WORDS vs recall ({PS.QUERY_NOTE}{scope})")
     ax.legend(loc="lower right")
-    # twin axis: chunk count (cost) vs MAX_WORDS, plotted at recall@10's k position
-    ax2 = ax.twinx()
+    # cost panel: chunk count vs MAX_WORDS
     counts = [data["rows"][str(mw)]["chunk_count"] for mw in data["maxwords"]]
-    ax2.plot(data["maxwords"], counts, "s--", color="gray", alpha=0.6, label="chunk count")
-    ax2.set_ylabel("chunk count (cost)", color="gray")
-    ax2.tick_params(axis="y", colors="gray")
-    ax2.grid(False)
+    cols = [PS.SHIPPED_COLOR if mw == data["shipped"] else "gray" for mw in data["maxwords"]]
+    b = axc.bar([str(m) for m in data["maxwords"]], counts, color=cols, edgecolor="white")
+    axc.bar_label(b, fmt="%d", fontsize=7)
+    axc.set_xlabel("MAX_WORDS"); axc.set_ylabel("chunk count (cost)")
+    scope = data.get("scope", "")
+    fig.suptitle(f"Chunk MAX_WORDS: recall vs cost ({PS.QUERY_NOTE}{scope}; red = shipped)")
     PS.save(fig, "s2_maxwords")
 
 
