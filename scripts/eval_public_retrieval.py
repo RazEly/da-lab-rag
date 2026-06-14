@@ -4,11 +4,15 @@ Complements scripts/eval_public.py (which reports NDCG@10): this reports the
 pre-rerank pool metrics from eval_retrieval — recall@k, hit@k, MRR, R-precision
 and the first-relevant-rank depth. Reads the committed artifacts; no rebuild.
 
-    python eval_public_retrieval.py
+    python scripts/eval_public_retrieval.py
 """
 from __future__ import annotations
 
+import sys
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from eval import load_query_file, mean_ndcg_at_k
 from eval_retrieval import DEFAULT_KS, retrieval_metrics

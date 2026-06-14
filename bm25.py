@@ -28,13 +28,11 @@ def tokenize(text: str) -> List[str]:
 
 @dataclass
 class BM25Index:
-    vocab: np.ndarray            # (V,) object — term strings
     idf: np.ndarray              # (V,) float32 — Robertson IDF per term
-    chunk_ids: np.ndarray        # COO int32 — row indices
-    term_ids: np.ndarray         # COO int32 — col indices
-    tf_weights: np.ndarray       # COO float32 — BM25 TF-saturation values
     num_chunks: int
     term_to_id: Dict[str, int] = field(default_factory=dict)
+    # term_id → (chunk_ids, tf_weights) posting list. Built from the saved COO at
+    # load; the raw COO arrays are dropped after — score only reads postings.
     inverted: Dict[int, Tuple[np.ndarray, np.ndarray]] = field(default_factory=dict)
 
 
@@ -133,23 +131,32 @@ def load_bm25(artifacts_dir: Optional[Path] = None) -> BM25Index:
     }
 
     return BM25Index(
-        vocab=vocab,
         idf=idf,
-        chunk_ids=chunk_ids,
-        term_ids=term_ids,
-        tf_weights=tf_weights,
         num_chunks=num_chunks,
         term_to_id=term_to_id,
         inverted=inverted,
     )
 
 
-def score_batch(bm25: BM25Index, queries: List[str]) -> np.ndarray:
+def score_batch(
+    bm25: BM25Index,
+    queries: List[str],
+    min_query_idf: float = 0.0,
+    fallback_threshold: float = 0.0,
+) -> np.ndarray:
     """
     Return raw BM25 scores, shape (n_queries, num_chunks).
 
     For each query term, looks up its posting list and accumulates idf * tf_sat
     into the chunk score vector. Duplicate query tokens counted once (BM25 standard).
+
+    min_query_idf: skip query terms whose Robertson IDF falls below this threshold.
+    Filtering low-IDF (high-frequency) terms sharpens precision by ignoring generic
+    words that match noise pages as readily as the target.
+
+    fallback_threshold: if the max filtered score for a query is below this value,
+    rescore that query with min_query_idf=0. Recovers queries where IDF filtering
+    removes all discriminative signal (e.g. highly generic/broad queries).
     """
     n_queries = len(queries)
     out = np.zeros((n_queries, bm25.num_chunks), dtype=np.float32)
@@ -164,7 +171,24 @@ def score_batch(bm25: BM25Index, queries: List[str]) -> np.ndarray:
             tid = bm25.term_to_id.get(t)
             if tid is None:
                 continue
+            idf = float(bm25.idf[tid])
+            if idf < min_query_idf:
+                continue
             cids, tfs = bm25.inverted[tid]
-            out[qi, cids] += bm25.idf[tid] * tfs
+            out[qi, cids] += idf * tfs
+
+        if fallback_threshold > 0.0 and min_query_idf > 0.0 and out[qi].max() < fallback_threshold:
+            seen2: set = set()
+            row = np.zeros(bm25.num_chunks, dtype=np.float32)
+            for t in tokenize(query):
+                if t in seen2:
+                    continue
+                seen2.add(t)
+                tid = bm25.term_to_id.get(t)
+                if tid is None:
+                    continue
+                cids, tfs = bm25.inverted[tid]
+                row[cids] += float(bm25.idf[tid]) * tfs
+            out[qi] = row
 
     return out

@@ -6,17 +6,21 @@ then sweeps fusion/aggregation params over the cached matrices. No index rebuild
 Query-text variants (lowercase / strip question words) re-embed + re-tokenize the
 50 queries only (cheap). Everything else reuses the fixed score matrices.
 
-    python sweep_retrieval.py
+    python scripts/sweep_retrieval.py
 """
 from __future__ import annotations
 
 import re
+import sys
 import time
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
-from bm25 import load_bm25, score_batch as bm25_score_batch, tokenize
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from bm25 import load_bm25, score_batch as bm25_score_batch
 from embed import embed_queries
 from eval import load_query_file, mean_ndcg_at_k
 from index import load_index, load_meta
@@ -25,7 +29,6 @@ from retrieve import (
     _build_page_numbers,
     _extract_query_numbers,
     _load_faiss,
-    _rrf,
 )
 from utils import PUBLIC_QUERIES_PATH
 

@@ -26,48 +26,46 @@ ENABLE_NUMBER_FILTER = True
 FILTER_MODE = "post"
 _QUERY_NUMBER_RE = re.compile(r"\b\d+\b")
 
-# S6: max+mean blend alpha over chunk scores per page. 1.0=pure max, 0.0=pure mean.
+# S6: max+mean blend per page. alpha 1.0=pure max, 0.0=pure mean.
 # CRITICAL (2026-06-05, full 27k): the two retrievers want OPPOSITE aggregation.
-#   Dense  : mean-heavy (alpha=0.2, topn=30) — gold is a long article whose chunks
-#            are uniformly on-topic; max alone picks one lucky chunk and buries it.
-#   BM25   : pure max  (alpha=1.0, topn=1)   — exact-match signal lives in ONE chunk;
-#            averaging dilutes the rank-1 hit.
-# Forcing a single ALPHA on both (old behaviour) starved BM25, the stronger leg.
-# Per-retriever agg + RRF k=60 lifted full-corpus NDCG@10 0.155 -> 0.275.
-ALPHA = 0.2  # retained for the legacy "blend" path / external callers
-AGG_TOPN = 30  # default mean-term cap (legacy "blend" path / external callers)
-
-# Fused-optimal agg (full 27k, 2026-06-06 sweep). Differs from each retriever's
-# SOLO best: once RRF-fused, BOTH retrievers want mean-heavy aggregation.
-#   Dense : pure mean (alpha=0.0), topn 50-100 (flat plateau, max term overfits one chunk).
-#   BM25  : near-pure mean (alpha=0.1), topn~12 — REVERSED from the old "pure max 1.0/1"
-#           solo belief. Once RRF-fused, a page with SEVERAL on-topic chunks should
-#           outrank a one-lucky-keyword page (helps Type-B multi-page queries).
-# Plateau flat over sparse alpha 0.0-0.2 / topn 12-20 (all ~0.36-0.37), so 0.1/12 is
-# the peak but not an overfit spike. Tuned on 50 public queries. NDCG@10 0.3695
-# (up from 0.3330 at the old 0.8/3; filter=off baseline is 0.3161).
+#   Dense  : mean-heavy — gold is a long article whose chunks are uniformly
+#            on-topic; max alone picks one lucky chunk and buries it.
+#   BM25   : max-heavy — exact-match signal lives in ONE chunk; averaging dilutes
+#            the rank-1 hit.
+# Forcing a single alpha on both (old behaviour) starved BM25, the stronger leg.
+# Per-retriever agg + RRF lifted full-corpus NDCG@10 0.155 -> 0.275.
+#
+# Fused-optimal agg (2026-06-14 sweep with adaptive IDF-filtered BM25).
+#   Dense : pure mean (alpha=0.0), topn=100.
+#   BM25  : near-mean (alpha=0.25), topn=30 — IDF filtering concentrates signal in
+#           fewer high-quality chunks; a wider topn captures multi-chunk GT pages.
+# BM25_QUERY_MIN_IDF=4.0 filters generic query terms (Robertson IDF < 4.0), keeping
+# only discriminative terms. BM25_FALLBACK_THRESHOLD=15.0: if the max filtered score
+# for a query is below this value, rescore unfiltered (recovers broad/generic queries).
+# NDCG@10 0.5433 (up from 0.5343 at idf-only, 0.5215 baseline).
 DENSE_ALPHA, DENSE_TOPN = 0.0, 100
-SPARSE_ALPHA, SPARSE_TOPN = 0.1, 12
+SPARSE_ALPHA, SPARSE_TOPN = 0.25, 30
 
-# Fusion mode: "rrf" (rank fusion) | "blend" (legacy convex score blend).
-# Score-blend monotonically degraded to BM25-only because min-max stretches MiniLM's
-# tightly-bunched cosines into noise on BM25's scale. RRF fuses by rank position only,
-# so dense's complementary recall returns without polluting BM25's order.
-FUSION = "rrf"
+# BM25 query-time IDF threshold: skip query terms with Robertson IDF below this.
+# Low-IDF terms (e.g. "founded", "company") match many pages indiscriminately;
+# filtering them sharpens BM25 precision without sacrificing high-IDF recall.
+# Optimal range 3.7-4.1 (plateau). 4.0 chosen as conservative centre.
+BM25_QUERY_MIN_IDF: float = 4.0
+# If IDF-filtered max chunk score < this threshold, fall back to unfiltered BM25.
+# Triggers only for queries where filtering removes all discriminative signal.
+# Threshold=15 targets exactly one such query type in the public set (broad city queries).
+BM25_FALLBACK_THRESHOLD: float = 15.0
 
-# RRF params (S3). Each retriever contributes its top-RRF_DEPTH page ranking;
-# fused score = sum 1/(RRF_K + rank). Toggle either retriever off to A/B.
-RRF_K = 60
-RRF_DEPTH = 200
+# RRF params: asymmetric depths (2026-06-13).
+# Dense=100 preserves semantic breadth; BM25=30 is tight enough that only
+# strong IDF-filtered matches compete (reduces noise from weak BM25 hits).
+RRF_K = 60  # was 28
+RRF_DEPTH = 100  # dense depth
+SPARSE_RRF_DEPTH = (
+    60  # was 25  # BM25 depth (tighter with IDF-filtered, high-quality top-25)
+)
 INCLUDE_DENSE = True
 INCLUDE_SPARSE = True
-
-# --- legacy "blend" mode only ---
-# S2: BM25 hybrid weight (BM25 share of final score).
-BM25_WEIGHT = 0.0
-# Normalization candidate pool: min/max computed over top-K only to avoid
-# outlier compression from non-retrieved documents setting the range.
-TOPK_NORM = 1000
 
 
 def _load_faiss(artifacts_dir: Path, corpus_vectors: np.ndarray):
@@ -96,26 +94,6 @@ def _load_faiss(artifacts_dir: Path, corpus_vectors: np.ndarray):
         return idx
     except Exception:
         return None
-
-
-def _minmax_topk(scores: np.ndarray, k: int) -> np.ndarray:
-    """
-    Per-row min-max normalisation using only the top-k values to define [lo, hi].
-
-    Avoids outlier compression: a single very-high-scoring document would
-    collapse all others toward 0 if we used global min/max.
-    Rows where all top-k values are equal (no BM25 signal) stay at 0.
-    """
-    k = min(k, scores.shape[1])
-    out = np.zeros_like(scores)
-    for i, row in enumerate(scores):
-        topk_idx = np.argpartition(row, -k)[-k:]
-        lo = float(row[topk_idx].min())
-        hi = float(row[topk_idx].max())
-        if hi - lo < 1e-9:
-            continue
-        out[i] = np.clip((row - lo) / (hi - lo), 0.0, 1.0)
-    return out
 
 
 def _extract_query_numbers(query: str) -> Set[int]:
@@ -156,7 +134,7 @@ def _aggregate_page_scores(
     page_ids: List[int],
     top_k: int,
     alpha: float,
-    agg_topn: int = AGG_TOPN,
+    agg_topn: int = 30,
     allowed_pages: Optional[Set[int]] = None,
 ) -> List[int]:
     """Max+mean blend aggregation over chunk scores → ranked page_id list.
@@ -196,8 +174,6 @@ def search_batch(
     queries: List[str],
     *,
     top_k: int = K_EVAL,
-    alpha: float = ALPHA,
-    bm25_weight: float = BM25_WEIGHT,
     artifacts_dir: Optional[Path] = None,
 ) -> List[List[int]]:
     """Return ranked page_id lists (best first) for each query."""
@@ -230,74 +206,55 @@ def search_batch(
         dense_scores = query_vectors @ corpus_vectors.T  # (Q, C)
 
     # BM25 sparse scores: (Q, C) accumulated from inverted index.
-    sparse_scores = bm25_score_batch(bm25, queries)  # (Q, C)
+    # min_query_idf drops low-discriminativity query terms (see BM25_QUERY_MIN_IDF).
+    sparse_scores = bm25_score_batch(
+        bm25,
+        queries,
+        min_query_idf=BM25_QUERY_MIN_IDF,
+        fallback_threshold=BM25_FALLBACK_THRESHOLD,
+    )  # (Q, C)
 
-    if FUSION == "rrf":
-        # Rank each retriever independently to page level, then fuse by rank.
-        # Immune to dense/BM25 score-scale mismatch (the cause of blend collapse).
-        results: List[List[int]] = []
-        for qi in range(len(queries)):
-            allowed = (
-                _allowed_pages_for_query(queries[qi], page_numbers)
-                if page_numbers is not None
-                else None
-            )
-            # pre-filter applies inside per-retriever aggregation; post-filter
-            # leaves ranking untouched and prunes the fused list afterwards.
-            pre = allowed if FILTER_MODE == "pre" else None
-            rankings: List[List[int]] = []
-            if INCLUDE_DENSE:
-                rankings.append(
-                    _aggregate_page_scores(
-                        dense_scores[qi],
-                        page_ids,
-                        RRF_DEPTH,
-                        DENSE_ALPHA,
-                        DENSE_TOPN,
-                        allowed_pages=pre,
-                    )
-                )
-            if INCLUDE_SPARSE:
-                rankings.append(
-                    _aggregate_page_scores(
-                        sparse_scores[qi],
-                        page_ids,
-                        RRF_DEPTH,
-                        SPARSE_ALPHA,
-                        SPARSE_TOPN,
-                        allowed_pages=pre,
-                    )
-                )
-            if FILTER_MODE == "post" and allowed is not None:
-                # Fuse the full pool, then keep only year-matching pages.
-                # Fall back to the unfiltered order if the filter empties it.
-                fused = _rrf(rankings, RRF_K, len(page_ids))
-                kept = [p for p in fused if p in allowed]
-                results.append((kept or fused)[:top_k])
-            else:
-                results.append(_rrf(rankings, RRF_K, top_k))
-        return results
-
-    # Legacy "blend": normalise each retriever over its own top-TOPK_NORM
-    # candidates (avoids one outlier compressing the range), then convex-combine.
-    dense_norm = _minmax_topk(dense_scores, TOPK_NORM)
-    sparse_norm = _minmax_topk(sparse_scores, TOPK_NORM)
-    final = (1.0 - bm25_weight) * dense_norm + bm25_weight * sparse_norm
-
-    out: List[List[int]] = []
-    for qi, row in enumerate(final):
+    # Rank each retriever independently to page level, then fuse by rank (RRF).
+    # Immune to dense/BM25 score-scale mismatch (the cause of blend collapse).
+    results: List[List[int]] = []
+    for qi in range(len(queries)):
         allowed = (
             _allowed_pages_for_query(queries[qi], page_numbers)
             if page_numbers is not None
             else None
         )
+        # pre-filter applies inside per-retriever aggregation; post-filter
+        # leaves ranking untouched and prunes the fused list afterwards.
         pre = allowed if FILTER_MODE == "pre" else None
-        if FILTER_MODE == "post" and allowed is not None:
-            ranked = _aggregate_page_scores(row, page_ids, len(page_ids), alpha)
-            kept = [p for p in ranked if p in allowed]
-            out.append((kept or ranked)[:top_k])
-        else:
-            out.append(
-                _aggregate_page_scores(row, page_ids, top_k, alpha, allowed_pages=pre)
+        rankings: List[List[int]] = []
+        if INCLUDE_DENSE:
+            rankings.append(
+                _aggregate_page_scores(
+                    dense_scores[qi],
+                    page_ids,
+                    RRF_DEPTH,
+                    DENSE_ALPHA,
+                    DENSE_TOPN,
+                    allowed_pages=pre,
+                )
             )
-    return out
+        if INCLUDE_SPARSE:
+            rankings.append(
+                _aggregate_page_scores(
+                    sparse_scores[qi],
+                    page_ids,
+                    SPARSE_RRF_DEPTH,
+                    SPARSE_ALPHA,
+                    SPARSE_TOPN,
+                    allowed_pages=pre,
+                )
+            )
+        if FILTER_MODE == "post" and allowed is not None:
+            # Fuse the full pool, then keep only number-matching pages.
+            # Fall back to the unfiltered order if the filter empties it.
+            fused = _rrf(rankings, RRF_K, len(page_ids))
+            kept = [p for p in fused if p in allowed]
+            results.append((kept or fused)[:top_k])
+        else:
+            results.append(_rrf(rankings, RRF_K, top_k))
+    return results

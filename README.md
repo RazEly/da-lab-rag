@@ -96,7 +96,7 @@ the query-phase time. The full `run(queries)` call must finish in **≤60 s on G
 
 - **The eval loop** — run `python scripts/eval_public.py` after *every* change and
   record the NDCG@10 delta. Never change two knobs at once without measuring in
-  between. `python eval_public_retrieval.py` reports the *pre-rerank pool* metrics
+  between. `python scripts/eval_public_retrieval.py` reports the *pre-rerank pool* metrics
   (recall@k, hit@k, MRR, first-relevant rank) — use it to tell a *recall* problem
   (the relevant page isn't in the pool) from a *ranking* problem (it's in the pool
   but ranked too low). They need different fixes.
@@ -111,7 +111,7 @@ proven the ceiling is in chunking, not ranking, and then you must rebuild + reco
 # 1. edit a knob in retrieve.py
 # 2. measure
 python scripts/eval_public.py          # mean NDCG@10 + wall time  ← the number that matters
-python eval_public_retrieval.py        # pool recall/MRR — diagnoses WHY a change helped/hurt
+python scripts/eval_public_retrieval.py        # pool recall/MRR — diagnoses WHY a change helped/hurt
 # 3. keep it only if NDCG@10 went up AND wall time stays well under 60 s
 ```
 
