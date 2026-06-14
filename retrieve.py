@@ -25,6 +25,11 @@ ENABLE_NUMBER_FILTER = True
 #          signal is trustworthy; post is safer when metadata recall is partial.
 FILTER_MODE = "post"
 _QUERY_NUMBER_RE = re.compile(r"\b\d+\b")
+# Decade tokens ("1820s") are NOT matched by _QUERY_NUMBER_RE (the trailing "s"
+# blocks the word boundary), so they'd otherwise contribute no number signal.
+# Expand each to its full year range, e.g. "1820s" -> {1820..1829}. Capture is
+# the decade base minus its final 0 ("1820s" -> "182").
+_DECADE_RE = re.compile(r"\b(\d{3,4})0s\b")
 
 # S6: max+mean blend per page. alpha 1.0=pure max, 0.0=pure mean.
 # CRITICAL (2026-06-05, full 27k): the two retrievers want OPPOSITE aggregation.
@@ -97,8 +102,17 @@ def _load_faiss(artifacts_dir: Path, corpus_vectors: np.ndarray):
 
 
 def _extract_query_numbers(query: str) -> Set[int]:
-    """All integer numbers mentioned in a query (matches stored metadata)."""
-    return {int(m) for m in _QUERY_NUMBER_RE.findall(query)}
+    """All integer numbers mentioned in a query (matches stored metadata).
+
+    Plain integers match literally; decade tokens ("1820s") expand to their
+    10-year range so a page dated to a specific year within the decade still
+    matches (no-op on the public set, cheap insurance for decade-heavy queries).
+    """
+    nums = {int(m) for m in _QUERY_NUMBER_RE.findall(query)}
+    for base in _DECADE_RE.findall(query):
+        start = int(base + "0")
+        nums.update(range(start, start + 10))
+    return nums
 
 
 def _build_page_numbers(

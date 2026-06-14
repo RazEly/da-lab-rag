@@ -1,0 +1,835 @@
+[
+    {
+        "query_id": "q_val_0",
+        "query": "How many species of trees can be found in the Amazon rainforest?",
+        "relevant_page_ids": [
+            "48139"
+        ]
+    },
+    {
+        "query_id": "q_val_1",
+        "query": "Who is drawing maps of their inset ancestral lands?",
+        "relevant_page_ids": [
+            "48139"
+        ]
+    },
+    {
+        "query_id": "q_val_2",
+        "query": "The region is home to 25 million what?",
+        "relevant_page_ids": [
+            "48139"
+        ]
+    },
+    {
+        "query_id": "q_val_3",
+        "query": "What happened to the rate of deforestation in the Amazon region of Brazil between 2004 and 2014?",
+        "relevant_page_ids": [
+            "48139"
+        ]
+    },
+    {
+        "query_id": "q_val_4",
+        "query": "What was higher during the LGM than the present?",
+        "relevant_page_ids": [
+            "48139"
+        ]
+    },
+    {
+        "query_id": "q_val_5",
+        "query": "Hunting and population are the main threats facing what?",
+        "relevant_page_ids": [
+            "48139"
+        ]
+    },
+    {
+        "query_id": "q_val_6",
+        "query": "What was classified in 2008?",
+        "relevant_page_ids": [
+            "48139"
+        ]
+    },
+    {
+        "query_id": "q_val_7",
+        "query": "What was Norman Cantor's theory about the plague?",
+        "relevant_page_ids": [
+            "4501"
+        ]
+    },
+    {
+        "query_id": "q_val_8",
+        "query": "How high of a fever does someone suffering from septicemic plague have?",
+        "relevant_page_ids": [
+            "4501"
+        ]
+    },
+    {
+        "query_id": "q_val_9",
+        "query": "How many people died of the plague in Ottoman society in the 19th century?",
+        "relevant_page_ids": [
+            "4501"
+        ]
+    },
+    {
+        "query_id": "q_val_10",
+        "query": "How many times did the plague visit Baghdad?",
+        "relevant_page_ids": [
+            "4501"
+        ]
+    },
+    {
+        "query_id": "q_val_11",
+        "query": "In what year did plague disease spread to Central Asia?",
+        "relevant_page_ids": [
+            "4501"
+        ]
+    },
+    {
+        "query_id": "q_val_12",
+        "query": "What scientific journal in France published a prior analysis of the Black Death?",
+        "relevant_page_ids": [
+            "4501"
+        ]
+    },
+    {
+        "query_id": "q_val_13",
+        "query": "What percentage of monks and priests died from the Black Death?",
+        "relevant_page_ids": [
+            "4501"
+        ]
+    },
+    {
+        "query_id": "q_val_14",
+        "query": "What do some people protest against?",
+        "relevant_page_ids": [
+            "37073"
+        ]
+    },
+    {
+        "query_id": "q_val_15",
+        "query": "What reason is given that you should also protest public companies?",
+        "relevant_page_ids": [
+            "37073"
+        ]
+    },
+    {
+        "query_id": "q_val_16",
+        "query": "What was the civil disobedience performed at the test site?",
+        "relevant_page_ids": [
+            "37073"
+        ]
+    },
+    {
+        "query_id": "q_val_17",
+        "query": "What civil rights movement in the US was known for it's disobedience?",
+        "relevant_page_ids": [
+            "37073"
+        ]
+    },
+    {
+        "query_id": "q_val_18",
+        "query": "Thoreau mentions what type of person could corrupt a government system?",
+        "relevant_page_ids": [
+            "37073"
+        ]
+    },
+    {
+        "query_id": "q_val_19",
+        "query": "What is a way you can show police officers civil disobedience ?",
+        "relevant_page_ids": [
+            "37073"
+        ]
+    },
+    {
+        "query_id": "q_val_20",
+        "query": "What did Ghandi decide to use so that everyone would have the same deal?",
+        "relevant_page_ids": [
+            "37073"
+        ]
+    },
+    {
+        "query_id": "q_val_21",
+        "query": "What infinite hierarchy implies that the graph isomorphism problem s NQ-complete?",
+        "relevant_page_ids": [
+            "7543"
+        ]
+    },
+    {
+        "query_id": "q_val_22",
+        "query": "The integer factorization problem essentially seeks to determine if the value of of an input is less than what variable? ",
+        "relevant_page_ids": [
+            "7543"
+        ]
+    },
+    {
+        "query_id": "q_val_23",
+        "query": "In what year was Hatmanis and Stearn's seminal work in computational complexity received? ",
+        "relevant_page_ids": [
+            "7543"
+        ]
+    },
+    {
+        "query_id": "q_val_24",
+        "query": "What are the two integer responses to a decision problem?",
+        "relevant_page_ids": [
+            "7543"
+        ]
+    },
+    {
+        "query_id": "q_val_25",
+        "query": "How is Turing machine M said not to operate?",
+        "relevant_page_ids": [
+            "7543"
+        ]
+    },
+    {
+        "query_id": "q_val_26",
+        "query": "What is another name for any given measure of input associated with a problem?",
+        "relevant_page_ids": [
+            "7543"
+        ]
+    },
+    {
+        "query_id": "q_val_27",
+        "query": "How many outputs are expected for each input in a function problem?",
+        "relevant_page_ids": [
+            "7543"
+        ]
+    },
+    {
+        "query_id": "q_val_28",
+        "query": "What is the effect of beta decay?",
+        "relevant_page_ids": [
+            "10902"
+        ]
+    },
+    {
+        "query_id": "q_val_29",
+        "query": "What was dificult to reconcile the photoelectric effect and the missing ultraviolet catastrophe?",
+        "relevant_page_ids": [
+            "10902"
+        ]
+    },
+    {
+        "query_id": "q_val_30",
+        "query": "What is QED short for?",
+        "relevant_page_ids": [
+            "10902"
+        ]
+    },
+    {
+        "query_id": "q_val_31",
+        "query": "In what universe would a falling cannonball land in front of the mast of a moving ship?",
+        "relevant_page_ids": [
+            "10902"
+        ]
+    },
+    {
+        "query_id": "q_val_32",
+        "query": "What makes day length constant on Earth?",
+        "relevant_page_ids": [
+            "10902"
+        ]
+    },
+    {
+        "query_id": "q_val_33",
+        "query": "What is an example of a metaphysical concept?",
+        "relevant_page_ids": [
+            "10902"
+        ]
+    },
+    {
+        "query_id": "q_val_34",
+        "query": "Where does the centripetal force come from?",
+        "relevant_page_ids": [
+            "10902"
+        ]
+    },
+    {
+        "query_id": "q_val_35",
+        "query": "Where was there a strength in British supply chain?",
+        "relevant_page_ids": [
+            "39062"
+        ]
+    },
+    {
+        "query_id": "q_val_36",
+        "query": "What was the attack on the British weakness?",
+        "relevant_page_ids": [
+            "39062"
+        ]
+    },
+    {
+        "query_id": "q_val_37",
+        "query": "How much resources were French placing in South America?",
+        "relevant_page_ids": [
+            "39062"
+        ]
+    },
+    {
+        "query_id": "q_val_38",
+        "query": "How did King Louis XV respond to British plans?",
+        "relevant_page_ids": [
+            "39062"
+        ]
+    },
+    {
+        "query_id": "q_val_39",
+        "query": "What areas did English recruit natives from?",
+        "relevant_page_ids": [
+            "39062"
+        ]
+    },
+    {
+        "query_id": "q_val_40",
+        "query": "What tribes weren't in Father Le Loutre's War?",
+        "relevant_page_ids": [
+            "39062"
+        ]
+    },
+    {
+        "query_id": "q_val_41",
+        "query": "What lands were reserved for the French?",
+        "relevant_page_ids": [
+            "39062"
+        ]
+    },
+    {
+        "query_id": "q_val_42",
+        "query": "What causes rock extension?",
+        "relevant_page_ids": [
+            "12207"
+        ]
+    },
+    {
+        "query_id": "q_val_43",
+        "query": "Whose theory was the theory of continental drift?",
+        "relevant_page_ids": [
+            "12207"
+        ]
+    },
+    {
+        "query_id": "q_val_44",
+        "query": "What was the most important discovery that led to the understanding that Earth's lithosphere is separated into tectonic plates?",
+        "relevant_page_ids": [
+            "12207"
+        ]
+    },
+    {
+        "query_id": "q_val_45",
+        "query": "When was James Hutton born?",
+        "relevant_page_ids": [
+            "12207"
+        ]
+    },
+    {
+        "query_id": "q_val_46",
+        "query": "Why is the second timeline needed? ",
+        "relevant_page_ids": [
+            "12207"
+        ]
+    },
+    {
+        "query_id": "q_val_47",
+        "query": "What does motion along dike swarms maintain?",
+        "relevant_page_ids": [
+            "12207"
+        ]
+    },
+    {
+        "query_id": "q_val_48",
+        "query": "What are key beds younger than?",
+        "relevant_page_ids": [
+            "12207"
+        ]
+    },
+    {
+        "query_id": "q_val_49",
+        "query": "What theory did Niels Jerne formulate?",
+        "relevant_page_ids": [
+            "14958"
+        ]
+    },
+    {
+        "query_id": "q_val_50",
+        "query": "What causes the organism to attack more slowly and weakly every time a pathogen is encountered?",
+        "relevant_page_ids": [
+            "14958"
+        ]
+    },
+    {
+        "query_id": "q_val_51",
+        "query": "What proteins are used by very few organisms?",
+        "relevant_page_ids": [
+            "14958"
+        ]
+    },
+    {
+        "query_id": "q_val_52",
+        "query": "Hormones can alter the sensitivity of the immune system, so they can be referred to as what?",
+        "relevant_page_ids": [
+            "14958"
+        ]
+    },
+    {
+        "query_id": "q_val_53",
+        "query": "Killer T cells can only recognize antigens coupled to what kind of molecules?",
+        "relevant_page_ids": [
+            "14958"
+        ]
+    },
+    {
+        "query_id": "q_val_54",
+        "query": "What can antibodies not neutralize?",
+        "relevant_page_ids": [
+            "14958"
+        ]
+    },
+    {
+        "query_id": "q_val_55",
+        "query": "What allows ions, water and toxins to exit the target cell's membrane?",
+        "relevant_page_ids": [
+            "14958"
+        ]
+    },
+    {
+        "query_id": "q_val_56",
+        "query": " How did Hobson argue to not rid the world of imperialism?",
+        "relevant_page_ids": [
+            "15316"
+        ]
+    },
+    {
+        "query_id": "q_val_57",
+        "query": "The amount of land a country controls is its worst what?",
+        "relevant_page_ids": [
+            "15316"
+        ]
+    },
+    {
+        "query_id": "q_val_58",
+        "query": "The process of imperialism never focused on controlling which group of people?",
+        "relevant_page_ids": [
+            "15316"
+        ]
+    },
+    {
+        "query_id": "q_val_59",
+        "query": "Who reigned over the Ottoman empire when it was at its most powerful.",
+        "relevant_page_ids": [
+            "15316"
+        ]
+    },
+    {
+        "query_id": "q_val_60",
+        "query": " What is colonialism's antithesis?",
+        "relevant_page_ids": [
+            "15316"
+        ]
+    },
+    {
+        "query_id": "q_val_61",
+        "query": " When is the latest most Marxists claim imperialism as an extension of capitalism has its roots",
+        "relevant_page_ids": [
+            "15316"
+        ]
+    },
+    {
+        "query_id": "q_val_62",
+        "query": " Friedrich Ratzel thought imperialism was not what for the country?",
+        "relevant_page_ids": [
+            "15316"
+        ]
+    },
+    {
+        "query_id": "q_val_63",
+        "query": "When was the IPCC Third Assessment Report published?",
+        "relevant_page_ids": [
+            "15030"
+        ]
+    },
+    {
+        "query_id": "q_val_64",
+        "query": "What was one proposal to let the IPCC respond to new evidence faster?",
+        "relevant_page_ids": [
+            "15030"
+        ]
+    },
+    {
+        "query_id": "q_val_65",
+        "query": "Who is the President of the IPCC?",
+        "relevant_page_ids": [
+            "15030"
+        ]
+    },
+    {
+        "query_id": "q_val_66",
+        "query": "How much did the IPCC Third Assessment Report say sea levels will rise from 1990 to 2100?",
+        "relevant_page_ids": [
+            "15030"
+        ]
+    },
+    {
+        "query_id": "q_val_67",
+        "query": "What report excluded a graph showing temperature reconstruction?",
+        "relevant_page_ids": [
+            "15030"
+        ]
+    },
+    {
+        "query_id": "q_val_68",
+        "query": "Who wrote the paper that the \"Millennial Northern Hemisphere temperature reconstruction\" graph was based on?",
+        "relevant_page_ids": [
+            "15030"
+        ]
+    },
+    {
+        "query_id": "q_val_69",
+        "query": "What other activities does the UNFCCC require the IPCC to run?",
+        "relevant_page_ids": [
+            "15030"
+        ]
+    },
+    {
+        "query_id": "q_val_70",
+        "query": "Who was the leader of the Islamist regime in Sudan?",
+        "relevant_page_ids": [
+            "15012"
+        ]
+    },
+    {
+        "query_id": "q_val_71",
+        "query": "Where does HAMAS want to establish an Islamic state?",
+        "relevant_page_ids": [
+            "15012"
+        ]
+    },
+    {
+        "query_id": "q_val_72",
+        "query": "How does HT strive to amass power?",
+        "relevant_page_ids": [
+            "15012"
+        ]
+    },
+    {
+        "query_id": "q_val_73",
+        "query": " What did the Islamic State proclaim itself in 2015?",
+        "relevant_page_ids": [
+            "15012"
+        ]
+    },
+    {
+        "query_id": "q_val_74",
+        "query": "Western governments considered Islamists to be the worse of two evils when compared to whom?",
+        "relevant_page_ids": [
+            "15012"
+        ]
+    },
+    {
+        "query_id": "q_val_75",
+        "query": "The perceived British policy of being hands off of its Muslim population has resulted in what derogatory term for France?",
+        "relevant_page_ids": [
+            "15012"
+        ]
+    },
+    {
+        "query_id": "q_val_76",
+        "query": "What do progressive moderates of Islam seek to separate?",
+        "relevant_page_ids": [
+            "15012"
+        ]
+    },
+    {
+        "query_id": "q_val_77",
+        "query": "In what year was the first known experiments on combustion and air conducted?",
+        "relevant_page_ids": [
+            "22303"
+        ]
+    },
+    {
+        "query_id": "q_val_78",
+        "query": "How is the O2 molecule referred to in its ground state? ",
+        "relevant_page_ids": [
+            "22303"
+        ]
+    },
+    {
+        "query_id": "q_val_79",
+        "query": "In what year did Dewar experiment on liquid oxygen?",
+        "relevant_page_ids": [
+            "22303"
+        ]
+    },
+    {
+        "query_id": "q_val_80",
+        "query": "Philo of Byzantium ____ surmised that air converted to fire",
+        "relevant_page_ids": [
+            "22303"
+        ]
+    },
+    {
+        "query_id": "q_val_81",
+        "query": "What is oxygen respiration therapy used to treat?",
+        "relevant_page_ids": [
+            "22303"
+        ]
+    },
+    {
+        "query_id": "q_val_82",
+        "query": "What does respiration release into the atmosphere?",
+        "relevant_page_ids": [
+            "22303"
+        ]
+    },
+    {
+        "query_id": "q_val_83",
+        "query": "What is R-OC-R?",
+        "relevant_page_ids": [
+            "22303"
+        ]
+    },
+    {
+        "query_id": "q_val_84",
+        "query": "What exist both in quadratic equations and integers?",
+        "relevant_page_ids": [
+            "23666"
+        ]
+    },
+    {
+        "query_id": "q_val_85",
+        "query": "Why must -1 be excluded in order to preserve the uniqueness of the fundamental theorem?",
+        "relevant_page_ids": [
+            "23666"
+        ]
+    },
+    {
+        "query_id": "q_val_86",
+        "query": "In the mid 20th century, who did not concur that 1 should be the first prime number?",
+        "relevant_page_ids": [
+            "23666"
+        ]
+    },
+    {
+        "query_id": "q_val_87",
+        "query": "Which theorem would be invalid if the number 1 were considered prime?",
+        "relevant_page_ids": [
+            "23666"
+        ]
+    },
+    {
+        "query_id": "q_val_88",
+        "query": "How many chosen numbers exist?",
+        "relevant_page_ids": [
+            "23666"
+        ]
+    },
+    {
+        "query_id": "q_val_89",
+        "query": "What is another function that primes have that the number 1 does not?",
+        "relevant_page_ids": [
+            "23666"
+        ]
+    },
+    {
+        "query_id": "q_val_90",
+        "query": "Trial division involves dividing n by every integer m greater than what?",
+        "relevant_page_ids": [
+            "23666"
+        ]
+    },
+    {
+        "query_id": "q_val_91",
+        "query": "How many days did the U.S. forces participate in the Cold War?",
+        "relevant_page_ids": [
+            "25845"
+        ]
+    },
+    {
+        "query_id": "q_val_92",
+        "query": "After the Dornbirner Ach was diverted, where does the Rhine flow now?",
+        "relevant_page_ids": [
+            "25845"
+        ]
+    },
+    {
+        "query_id": "q_val_93",
+        "query": "How wide is the second east-west shipping route?",
+        "relevant_page_ids": [
+            "25845"
+        ]
+    },
+    {
+        "query_id": "q_val_94",
+        "query": "What flows between the Bingen and Bonn?",
+        "relevant_page_ids": [
+            "25845"
+        ]
+    },
+    {
+        "query_id": "q_val_95",
+        "query": "What does the Rhine merge with outside of Germany?",
+        "relevant_page_ids": [
+            "25845"
+        ]
+    },
+    {
+        "query_id": "q_val_96",
+        "query": "When did Augustus find Rome?",
+        "relevant_page_ids": [
+            "25845"
+        ]
+    },
+    {
+        "query_id": "q_val_97",
+        "query": "In which century was the Grand Canal d'Alsace ended?",
+        "relevant_page_ids": [
+            "25845"
+        ]
+    },
+    {
+        "query_id": "q_val_98",
+        "query": "What is another way of referring to power systems?",
+        "relevant_page_ids": [
+            "27692"
+        ]
+    },
+    {
+        "query_id": "q_val_99",
+        "query": "How many events occur in an engine cycle?",
+        "relevant_page_ids": [
+            "27692"
+        ]
+    },
+    {
+        "query_id": "q_val_100",
+        "query": "Who patented a steam engine in 1883?",
+        "relevant_page_ids": [
+            "27692"
+        ]
+    },
+    {
+        "query_id": "q_val_101",
+        "query": "How many mechanisms does a typical steam engine have to keep boiler pressure from getting too high?",
+        "relevant_page_ids": [
+            "27692"
+        ]
+    },
+    {
+        "query_id": "q_val_102",
+        "query": "What sort of motion did Newcomen's steam engine continuously produce?",
+        "relevant_page_ids": [
+            "27692"
+        ]
+    },
+    {
+        "query_id": "q_val_103",
+        "query": "What was the name of Watt's boss?",
+        "relevant_page_ids": [
+            "27692"
+        ]
+    },
+    {
+        "query_id": "q_val_104",
+        "query": "In what year was HMS Dreadnought launched?",
+        "relevant_page_ids": [
+            "27692"
+        ]
+    },
+    {
+        "query_id": "q_val_105",
+        "query": "How many clubs do the students at the University of Model United Nations run?",
+        "relevant_page_ids": [
+            "32127"
+        ]
+    },
+    {
+        "query_id": "q_val_106",
+        "query": "The university agreed to grant a degree to any graduate of affiliate schoos that did what?",
+        "relevant_page_ids": [
+            "32127"
+        ]
+    },
+    {
+        "query_id": "q_val_107",
+        "query": "What has the university held since 1963 where large teams find items from a list?",
+        "relevant_page_ids": [
+            "32127"
+        ]
+    },
+    {
+        "query_id": "q_val_108",
+        "query": "On which Woods Hole campus is the National Opinion Research Center located?",
+        "relevant_page_ids": [
+            "32127"
+        ]
+    },
+    {
+        "query_id": "q_val_109",
+        "query": "Why did Hutchins eliminate hospitals from the university?",
+        "relevant_page_ids": [
+            "32127"
+        ]
+    },
+    {
+        "query_id": "q_val_110",
+        "query": "Who is known for inventing the first elementary charge calculator?",
+        "relevant_page_ids": [
+            "32127"
+        ]
+    },
+    {
+        "query_id": "q_val_111",
+        "query": "What development has the University of Biological Physics played a lead role in?",
+        "relevant_page_ids": [
+            "32127"
+        ]
+    },
+    {
+        "query_id": "q_val_112",
+        "query": "How many rooms does the Warsaw Historical Museum have?",
+        "relevant_page_ids": [
+            "32908"
+        ]
+    },
+    {
+        "query_id": "q_val_113",
+        "query": "What conviction did many Poles have regarding how the Varsovians thought of themselves?",
+        "relevant_page_ids": [
+            "32908"
+        ]
+    },
+    {
+        "query_id": "q_val_114",
+        "query": "What castle currently houses the Centre for Ujazdow Art?",
+        "relevant_page_ids": [
+            "32908"
+        ]
+    },
+    {
+        "query_id": "q_val_115",
+        "query": "How long has the imagery of the mermaid been used by Warsaw?",
+        "relevant_page_ids": [
+            "32908"
+        ]
+    },
+    {
+        "query_id": "q_val_116",
+        "query": "What have Bloc's sidewalks and sanitation facilities done?",
+        "relevant_page_ids": [
+            "32908"
+        ]
+    },
+    {
+        "query_id": "q_val_117",
+        "query": "What did a greedy merchant do to Triton?",
+        "relevant_page_ids": [
+            "32908"
+        ]
+    },
+    {
+        "query_id": "q_val_118",
+        "query": "What were the Saxon Palace and Br\u00fchl Palace in prewar Warsaw?",
+        "relevant_page_ids": [
+            "32908"
+        ]
+    }
+]
