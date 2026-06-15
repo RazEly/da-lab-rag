@@ -30,15 +30,16 @@ prebuilt index under `artifacts/`.
 
 ## Current results
 
-Measured on the 29 labelled public queries (`scripts/eval_public.py` /
-`scripts/eval_public_retrieval.py`), committed `artifacts/`, no rebuild:
+Measured on the 29 labelled public queries (`scripts/eval_public.py`), committed
+`artifacts/`, no rebuild (no-filter BM25, 2026-06-15):
 
 | Metric | Value |
 |---|---|
-| mean NDCG@10 | **0.5428** |
-| query-phase time | ~55 s (under the 60 s wall; includes artifact load) |
-| recall@10 / @50 / @100 | 0.6321 / 0.8565 / 0.9174 |
-| mrr@100 | 0.5957 |
+| mean NDCG@10 | **0.5297** |
+| query-phase time | ~39 s (under the 60 s wall; includes artifact load) |
+| recall@10 / @50 / @100 | 0.6321 / 0.8539 / 0.9338 |
+| hit@10 / @50 | 0.8621 / 0.9655 |
+| mrr@100 | 0.5404 |
 | first relevant rank | median 2, p90 12, found_any 1.00 |
 | zero-score queries | 4 / 29 |
 
@@ -58,7 +59,7 @@ First-stage retrieval almost always finds a relevant page in the top 100
 | `headers.py` | recovers flattened `== Section ==` headings from paragraph tails (closed-class filter, ~95% precision); feeds `chunk.peel_headers` |
 | `embed.py` | MiniLM wrapper, L2-normalized; `embed_texts` == `embed_queries` (symmetric model) |
 | `index.py` | builds `index_vectors.npy` + `index_meta.json` + `bm25.npz` + `faiss.index`; `--subset N` GT-inclusive dev build |
-| `retrieve.py` | `search_batch`: FAISS `IndexFlatIP` dense + BM25 sparse, per-retriever `max+mean` agg, RRF fusion; BM25 IDF filter + adaptive fallback + number post-filter |
+| `retrieve.py` | `search_batch`: FAISS `IndexFlatIP` dense + BM25 sparse, per-retriever `max+mean` agg, RRF fusion; number post-filter |
 | `bm25.py` | numpy-only BM25 (k1=1.5, b=0.5): build/load/score, inverted index; `score_batch` supports `min_query_idf` + `fallback_threshold` |
 | `utils.py` | paths, corpus iteration, `entry_text(record)`, `load_public_queries`, `normalize_page_id` |
 | `eval.py` | read-only NDCG@10 scorer (`mean_ndcg_at_k`, `load_query_file`) |
@@ -93,12 +94,12 @@ Two retrievers (dense + BM25) are ranked **independently to page level**, then
 fused by **rank** (RRF), never by raw score — this sidesteps the dense/BM25
 score-scale mismatch (cosine ∈ [−1,1] vs unbounded BM25 sums).
 
-- **Per-retriever chunk→page aggregation** (`max+mean` blend; `alpha=1`→pure max, `0`→pure mean). The two legs want **opposite** aggregation:
-  - **Dense → mean** (gold is a long, uniformly on-topic article; max picks one lucky chunk).
-  - **BM25 → near-max** (exact-match signal lives in one chunk; averaging dilutes it).
+- **Per-retriever chunk→page aggregation** (`max+mean` blend; `alpha=1`→pure max, `0`→pure mean). Both legs' `alpha`/`topn` are tuned against the **fused** NDCG@10 (`scripts/sweep_retrieval.py`), not each leg's solo score — solo-optimal ≠ fused-optimal (analysis §D / `s6_aggregation`):
+  - **Dense → mean** (`alpha=0.0`) — gold is a long, uniformly on-topic article; max picks one lucky chunk. (This is also dense's solo optimum.)
+  - **BM25 → near-mean** (`alpha=0.25`, wider `topn=30`). BM25 *solo* peaks near max (`alpha≈0.75`: exact-match signal lives in one chunk), but fused it ships near-mean — a wider mean captures multi-chunk GT pages and complements dense (shipped fused 0.5363 vs solo-best pair fused 0.5182).
   - A single shared alpha starves BM25 — this is why an earlier shared-setting build scored far lower.
 - **RRF**: a page at rank `r` (0-indexed) contributes `1/(RRF_K + r + 1)`; contributions summed across legs; re-sorted. `RRF_K` damps the top so agreement across both legs beats one leg's lucky #1. Depths are asymmetric (dense broad, BM25 tight).
-- **BM25 IDF filter**: drop query terms with Robertson IDF < `BM25_QUERY_MIN_IDF`; an adaptive fallback rescores unfiltered if filtering removes all signal.
+- **No BM25 query-term filtering**: BM25 scores every query term. A hard IDF cutoff (`BM25_QUERY_MIN_IDF` / fallback) was tried and **removed** (2026-06-15) — it only helped the public dev set it was fit on and regressed both held-out sets; BM25's own IDF weight already down-weights generic terms.
 - **Number post-filter**: every integer in a chunk body is stored per-chunk; unioned to `page_id → {numbers}` at load. Per query, pull all integers (`\b\d+\b`; decades like "1820s" expand to {1820…1829}). In `post` mode, RRF-rank the full corpus, then drop pages whose number set doesn't intersect the query's. Skipped if the query names no number, or no page carries it, or `chunk_numbers` is absent.
 
 ## Active hyperparameters
@@ -112,8 +113,6 @@ score-scale mismatch (cosine ∈ [−1,1] vs unbounded BM25 sums).
 | `RRF_K` | 28 | damps the top (analysis §0.1 gate 2026-06-14: 60→28, +0.0065 NDCG) |
 | `RRF_DEPTH` | 100 | dense RRF candidate depth |
 | `SPARSE_RRF_DEPTH` | 60 | BM25 RRF candidate depth |
-| `BM25_QUERY_MIN_IDF` | 4.0 | skip low-discriminativity query terms (plateau ≈3.7–4.1) |
-| `BM25_FALLBACK_THRESHOLD` | 15.0 | if filtered max < 15, rescore unfiltered |
 | `ENABLE_NUMBER_FILTER` / `FILTER_MODE` | True / "post" | rank full pool, then drop non-number-matching pages |
 
 ### `chunk.py` / `bm25.py`

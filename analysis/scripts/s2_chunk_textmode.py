@@ -69,13 +69,14 @@ def plot(data: dict) -> None:
     import matplotlib.pyplot as plt
 
     PS.apply_style()
+    ks = [k for k in data["ks"] if k <= 10]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4.8))
     for i, m in enumerate(data["mode_names"]):
-        ys = [data["modes"][m][f"recall@{k}"] for k in data["ks"]]
+        ys = [data["modes"][m][f"recall@{k}"] for k in ks]
         lbl = m + (" (shipped)" if m == data["shipped_mode"] else "")
-        ax1.plot(data["ks"], ys, "o-", color=PS.PALETTE[i],
+        ax1.plot(ks, ys, "o-", color=PS.PALETTE[i],
                  lw=2.5 if m == data["shipped_mode"] else 1.5, label=lbl)
-    ax1.set_xscale("log"); ax1.set_xticks(data["ks"]); ax1.set_xticklabels(data["ks"])
+    ax1.set_xscale("log"); ax1.set_xticks(ks); ax1.set_xticklabels(ks)
     ax1.set_xlabel("k"); ax1.set_ylabel("dense-only recall@k")
     ax1.set_title("Text-mode injection"); ax1.legend()
 

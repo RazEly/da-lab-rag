@@ -26,7 +26,7 @@ import metrics as M
 def step_HK(skip_latency: bool) -> dict:
     ctx = H.load_prod()
     p = C.current_prod_params()
-    ss = H.prod_bm25(p["BM25_QUERY_MIN_IDF"], p["BM25_FALLBACK_THRESHOLD"])
+    ss = H.prod_bm25()
     fk = C.prod_fuse_kwargs()
 
     # Shipped fused ranking (deep) for recall + per-query.

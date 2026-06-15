@@ -24,7 +24,7 @@ KS = (5, 10, 20)
 def compute() -> dict:
     ctx = H.load_prod()
     p = C.current_prod_params()
-    ss = H.prod_bm25(p["BM25_QUERY_MIN_IDF"], p["BM25_FALLBACK_THRESHOLD"])
+    ss = H.prod_bm25()
     fk = C.prod_fuse_kwargs()
     fk["filter_mode"] = "off"  # first-stage pool, pre-filter
 
@@ -68,7 +68,7 @@ def plot(data: dict) -> None:
     ax.set_xticks(x)
     ax.set_xticklabels(metrics_order)
     ax.set_ylabel("score")
-    ax.set_title(f"Hybrid fusion vs single leg ({PS.QUERY_NOTE})")
+    ax.set_title("Dense vs. Sparse vs. Fused")
     ax.legend()
     PS.save(fig, "s5_retrievers")
 

@@ -40,26 +40,19 @@ _DECADE_RE = re.compile(r"\b(\d{3,4})0s\b")
 # Forcing a single alpha on both (old behaviour) starved BM25, the stronger leg.
 # Per-retriever agg + RRF lifted full-corpus NDCG@10 0.155 -> 0.275.
 #
-# Fused-optimal agg (2026-06-14 sweep with adaptive IDF-filtered BM25).
+# Fused-optimal agg (2026-06-14 sweep).
 #   Dense : pure mean (alpha=0.0), topn=100.
-#   BM25  : near-mean (alpha=0.25), topn=30 — IDF filtering concentrates signal in
-#           fewer high-quality chunks; a wider topn captures multi-chunk GT pages.
-# BM25_QUERY_MIN_IDF=4.0 filters generic query terms (Robertson IDF < 4.0), keeping
-# only discriminative terms. BM25_FALLBACK_THRESHOLD=15.0: if the max filtered score
-# for a query is below this value, rescore unfiltered (recovers broad/generic queries).
-# NDCG@10 0.5433 (up from 0.5343 at idf-only, 0.5215 baseline).
+#   BM25  : near-mean (alpha=0.25), topn=30 — a wider topn captures multi-chunk GT pages.
+#
+# No BM25 query-term filtering (2026-06-15). A hard IDF cutoff was tried and
+# removed: it only helped the 29-query public dev set it was fit on (+0.013 NDCG@10)
+# and regressed both held-out sets — llm_queries (-0.004), squad_queries (-0.023).
+# BM25's own Robertson-IDF weight already down-weights generic terms continuously,
+# so a hard cutoff (and a stopword-list variant, which lost on all three sets) only
+# discarded small-but-nonzero signal. See analysis/results/bm25_idf_filter_ab.json,
+# bm25_idf_filter_sweep.json, bm25_stopwords_ab.json.
 DENSE_ALPHA, DENSE_TOPN = 0.0, 100
 SPARSE_ALPHA, SPARSE_TOPN = 0.25, 30
-
-# BM25 query-time IDF threshold: skip query terms with Robertson IDF below this.
-# Low-IDF terms (e.g. "founded", "company") match many pages indiscriminately;
-# filtering them sharpens BM25 precision without sacrificing high-IDF recall.
-# Optimal range 3.7-4.1 (plateau). 4.0 chosen as conservative centre.
-BM25_QUERY_MIN_IDF: float = 4.0
-# If IDF-filtered max chunk score < this threshold, fall back to unfiltered BM25.
-# Triggers only for queries where filtering removes all discriminative signal.
-# Threshold=15 targets exactly one such query type in the public set (broad city queries).
-BM25_FALLBACK_THRESHOLD: float = 15.0
 
 # RRF params: asymmetric depths (2026-06-13).
 # Dense=100 preserves semantic breadth; BM25=30 is tight enough that only
@@ -225,13 +218,7 @@ def search_batch(
         dense_scores = query_vectors @ corpus_vectors.T  # (Q, C)
 
     # BM25 sparse scores: (Q, C) accumulated from inverted index.
-    # min_query_idf drops low-discriminativity query terms (see BM25_QUERY_MIN_IDF).
-    sparse_scores = bm25_score_batch(
-        bm25,
-        queries,
-        min_query_idf=BM25_QUERY_MIN_IDF,
-        fallback_threshold=BM25_FALLBACK_THRESHOLD,
-    )  # (Q, C)
+    sparse_scores = bm25_score_batch(bm25, queries)  # (Q, C)
 
     # Rank each retriever independently to page level, then fuse by rank (RRF).
     # Immune to dense/BM25 score-scale mismatch (the cause of blend collapse).

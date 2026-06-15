@@ -24,7 +24,7 @@ class ProdContext:
     page_ids: List[int]
     page_numbers: Optional[Dict[int, Set[int]]]
     dense: np.ndarray  # (Q,C) on prod artifacts
-    # bm25 cached per (min_idf, fallback) on demand
+    # bm25 cached on demand
 
 
 def load_prod() -> ProdContext:
@@ -35,9 +35,9 @@ def load_prod() -> ProdContext:
     return ProdContext(queries, gt, page_ids, page_numbers, dense)
 
 
-def prod_bm25(min_idf: float, fallback: float) -> np.ndarray:
+def prod_bm25() -> np.ndarray:
     queries, _ = C.load_eval()
-    return C.bm25_score_matrix(queries, tag="prod", min_idf=min_idf, fallback=fallback)
+    return C.bm25_score_matrix(queries, tag="prod")
 
 
 def gate(

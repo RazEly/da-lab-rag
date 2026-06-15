@@ -59,7 +59,7 @@ def _score_blend(dense, sparse, page_ids, queries, gt, p):
 def compute() -> dict:
     ctx = H.load_prod()
     p = C.current_prod_params()
-    ss = H.prod_bm25(p["BM25_QUERY_MIN_IDF"], p["BM25_FALLBACK_THRESHOLD"])
+    ss = H.prod_bm25()
     fk = C.prod_fuse_kwargs()
 
     def fused(**ov):

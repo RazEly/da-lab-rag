@@ -40,7 +40,7 @@ def _best_cell(grid: dict):
 def compute() -> dict:
     ctx = H.load_prod()
     p = C.current_prod_params()
-    ss = H.prod_bm25(p["BM25_QUERY_MIN_IDF"], p["BM25_FALLBACK_THRESHOLD"])
+    ss = H.prod_bm25()
     dense_grid = _solo_grid(ctx.dense, ctx.page_ids, ctx.gt)
     bm25_grid = _solo_grid(ss, ctx.page_ids, ctx.gt)
     d_a, d_t, d_best = _best_cell(dense_grid)

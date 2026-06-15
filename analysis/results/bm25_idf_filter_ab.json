@@ -1,0 +1,57 @@
+{
+  "filter_on_params": {
+    "min_idf": 4.0,
+    "fallback": 15.0
+  },
+  "filter_off_params": {
+    "min_idf": 0.0,
+    "fallback": 0.0
+  },
+  "sets": {
+    "public": {
+      "file": "public_queries.json",
+      "n_queries": 29,
+      "with_filter": {
+        "ndcg@10": 0.5428181276581148,
+        "recall@10": 0.6321291735084837,
+        "recall@100": 0.9174055829228244
+      },
+      "without_filter": {
+        "ndcg@10": 0.5297016095432858,
+        "recall@10": 0.6321291735084837,
+        "recall@100": 0.9338259441707718
+      },
+      "delta_ndcg": 0.013116518114828946
+    },
+    "llm": {
+      "file": "llm_queries.json",
+      "n_queries": 30,
+      "with_filter": {
+        "ndcg@10": 0.8559605444479954,
+        "recall@10": 0.9266666666666666,
+        "recall@100": 0.9600000000000001
+      },
+      "without_filter": {
+        "ndcg@10": 0.859745827324157,
+        "recall@10": 0.9377777777777777,
+        "recall@100": 0.9600000000000001
+      },
+      "delta_ndcg": -0.003785282876161644
+    },
+    "squad": {
+      "file": "squad_queries.json",
+      "n_queries": 119,
+      "with_filter": {
+        "ndcg@10": 0.43897395543343637,
+        "recall@10": 0.6050420168067226,
+        "recall@100": 0.7899159663865546
+      },
+      "without_filter": {
+        "ndcg@10": 0.4618331760689148,
+        "recall@10": 0.6218487394957983,
+        "recall@100": 0.8151260504201681
+      },
+      "delta_ndcg": -0.022859220635478406
+    }
+  }
+}

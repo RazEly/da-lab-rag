@@ -162,20 +162,15 @@ def bm25_score_matrix(
     tag: str = "prod",
     variant: str = "base",
     index_dir: Optional[Path] = None,
-    min_idf: float = 0.0,
-    fallback: float = 0.0,
     cache: bool = True,
     force: bool = False,
 ) -> np.ndarray:
-    """(Q, C) BM25 scores from a bm25.npz. Cached per (idf, fallback)."""
-    vtag = f"{variant}_idf{min_idf}_fb{fallback}"
-    cpath = _cache_path("bm25", tag, vtag, queries)
+    """(Q, C) BM25 scores from a bm25.npz. Cached per variant."""
+    cpath = _cache_path("bm25", tag, variant, queries)
     if cache and cpath.exists() and not force:
         return np.load(cpath)
     bm25 = load_bm25(index_dir or ARTIFACTS_DIR)
-    ss = bm25_score_batch(
-        bm25, list(queries), min_query_idf=min_idf, fallback_threshold=fallback
-    )
+    ss = bm25_score_batch(bm25, list(queries))
     if cache:
         np.save(cpath, ss)
     return ss
@@ -309,8 +304,6 @@ def current_prod_params() -> Dict[str, Any]:
         "RRF_K": _r.RRF_K,
         "RRF_DEPTH": _r.RRF_DEPTH,
         "SPARSE_RRF_DEPTH": _r.SPARSE_RRF_DEPTH,
-        "BM25_QUERY_MIN_IDF": _r.BM25_QUERY_MIN_IDF,
-        "BM25_FALLBACK_THRESHOLD": _r.BM25_FALLBACK_THRESHOLD,
         "FILTER_MODE": _r.FILTER_MODE,
         "ENABLE_NUMBER_FILTER": _r.ENABLE_NUMBER_FILTER,
         "MAX_WORDS": _chunk.MAX_WORDS,

@@ -1,14 +1,15 @@
 """Offline index build and load (not timed at grading)."""
+
 from __future__ import annotations
 
 import json
+from chunk import Chunk, chunk_corpus
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
 from bm25 import build_bm25
-from chunk import Chunk, chunk_corpus
 from embed import embed_texts
 from utils import ARTIFACTS_DIR, ensure_artifacts_dir, iter_entries
 
@@ -40,7 +41,9 @@ def _select_subset(records: List[Dict[str, Any]], n: int) -> List[Dict[str, Any]
         return gt_recs[:n]
 
     fill = other[: n - len(gt_recs)]
-    print(f"[index] subset: {len(gt_recs)} GT + {len(fill)} filler = {len(gt_recs) + len(fill)} pages")
+    print(
+        f"[index] subset: {len(gt_recs)} GT + {len(fill)} filler = {len(gt_recs) + len(fill)} pages"
+    )
     return gt_recs + fill
 
 
@@ -84,9 +87,7 @@ def build_index(
         "model": "sentence-transformers/all-MiniLM-L6-v2",
         "num_vectors": len(page_ids),
     }
-    (out_dir / INDEX_META_NAME).write_text(
-        json.dumps(meta, indent=2), encoding="utf-8"
-    )
+    (out_dir / INDEX_META_NAME).write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
     build_bm25(chunks, out_dir)
     _build_faiss(vectors, out_dir)
@@ -98,6 +99,7 @@ def _build_faiss(vectors: np.ndarray, out_dir: Path) -> None:
     """Build and save FAISS IndexFlatIP (exact cosine for L2-normalised vectors)."""
     try:
         import faiss  # type: ignore
+
         dim = vectors.shape[1]
         idx = faiss.IndexFlatIP(dim)
         idx.add(vectors)

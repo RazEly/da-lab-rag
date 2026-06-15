@@ -199,14 +199,15 @@ sees production as left by the previous step.
   Update if the curve's argmax clears the gate; else keep.
 - `scripts/s7_rrf_ablation.py` → `results/s7_rrf.json` → bar + line.
 
-### F. BM25 IDF filter (Slide 7) — param-only
-- **Decision under test:** drop query terms below `BM25_QUERY_MIN_IDF`.
-- **Sweep:** NDCG@10 vs `BM25_QUERY_MIN_IDF` over [0..6] (re-score via
-  `bm25.score_batch(min_query_idf=t, fallback_threshold=…)`, fuse with shipped
-  params); report where the plateau actually is.
-- **Production target:** `BM25_QUERY_MIN_IDF` (and `BM25_FALLBACK_THRESHOLD` if
-  swept jointly). Update if gate passes; prefer the plateau centre over a noisy peak.
-- `scripts/s7_idf_threshold.py` → `results/s7_idf.json` → line (shipped marked).
+### F. BM25 IDF filter — REMOVED (2026-06-15)
+- A hard query-term IDF cutoff (`BM25_QUERY_MIN_IDF` / fallback) was tried and
+  removed from the codebase. It only helped the 29-query public dev set it was fit
+  on (+0.013 NDCG@10) and regressed both held-out sets — `llm_queries` (-0.004),
+  `squad_queries` (-0.023). BM25's own Robertson-IDF weight already down-weights
+  generic terms continuously; a hard cutoff (and a stopword-list variant, which
+  lost on all three sets) only discarded small-but-nonzero signal. `bm25.score_batch`
+  no longer accepts a filter argument. Record kept: `results/bm25_idf_filter_ab.json`,
+  `bm25_idf_filter_sweep.json`, `bm25_stopwords_ab.json` (generating scripts deleted).
 
 ### G. Number filter mode (Slide 7) — param-only
 - **Decision under test:** `FILTER_MODE="post"` vs `pre`/`off`.

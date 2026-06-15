@@ -49,8 +49,7 @@ json), writes raw to `results/` **before** plotting. Re-running is idempotent
 | C | `s5_retriever_grouped` | fuse vs single leg | (diagnostic) | fused wins |
 | D | `s6_aggregation_heatmap` | per-retriever alpha/topn | `DENSE_/SPARSE_ALPHA,TOPN` | kept |
 | E | `s7_rrf_ablation` | RRF vs blend; `RRF_K` | `retrieve.RRF_K` | **changed 60 → 28** |
-| F | `s7_idf_threshold` | BM25 IDF filter | `BM25_QUERY_MIN_IDF` | kept 4.0 |
-| G | `s7_number_filter` | number filter mode | `FILTER_MODE` | kept `post` |
+| F | `s7_number_filter` | number filter mode | `FILTER_MODE` | kept `post` |
 | H–K | `extra_stats` | per-query / first-rel / latency / headline | (diagnostic) | — |
 
 ## The §0.1 gate (`harness.gate`)

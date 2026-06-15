@@ -1,4 +1,3 @@
-"""BM25 sparse index: build, load, score. Numpy-only (no scipy)."""
 from __future__ import annotations
 
 import math
@@ -28,7 +27,7 @@ def tokenize(text: str) -> List[str]:
 
 @dataclass
 class BM25Index:
-    idf: np.ndarray              # (V,) float32 — Robertson IDF per term
+    idf: np.ndarray  # (V,) float32 — Robertson IDF per term
     num_chunks: int
     term_to_id: Dict[str, int] = field(default_factory=dict)
     # term_id → (chunk_ids, tf_weights) posting list. Built from the saved COO at
@@ -46,7 +45,6 @@ def build_bm25(chunks, out_dir: Optional[Path] = None) -> None:
     """
     out_dir = out_dir or ARTIFACTS_DIR
     n = len(chunks)
-    print(f"[bm25] tokenizing {n} chunks ...")
 
     docs: List[List[str]] = [tokenize(c.text) for c in chunks]
 
@@ -61,8 +59,6 @@ def build_bm25(chunks, out_dir: Optional[Path] = None) -> None:
 
     vocab_list = sorted(df.keys())
     term_to_id = {t: i for i, t in enumerate(vocab_list)}
-    V = len(vocab_list)
-    print(f"[bm25] vocab size: {V}")
 
     # Robertson IDF: log((N - df + 0.5) / (df + 0.5) + 1)
     idf = np.array(
@@ -71,7 +67,6 @@ def build_bm25(chunks, out_dir: Optional[Path] = None) -> None:
     )
 
     # Build COO sparse matrix of TF-saturation weights
-    print(f"[bm25] building sparse TF matrix ...")
     rows: List[int] = []
     cols: List[int] = []
     vals: List[float] = []
@@ -89,8 +84,6 @@ def build_bm25(chunks, out_dir: Optional[Path] = None) -> None:
             cols.append(tid)
             vals.append(tf_sat)
 
-    nnz = len(rows)
-    print(f"[bm25] saving {nnz} non-zeros → {out_dir / BM25_INDEX_NAME}")
     np.savez(
         out_dir / BM25_INDEX_NAME,
         vocab=np.array(vocab_list, dtype=object),
@@ -141,54 +134,26 @@ def load_bm25(artifacts_dir: Optional[Path] = None) -> BM25Index:
 def score_batch(
     bm25: BM25Index,
     queries: List[str],
-    min_query_idf: float = 0.0,
-    fallback_threshold: float = 0.0,
 ) -> np.ndarray:
     """
     Return raw BM25 scores, shape (n_queries, num_chunks).
 
     For each query term, looks up its posting list and accumulates idf * tf_sat
     into the chunk score vector. Duplicate query tokens counted once (BM25 standard).
-
-    min_query_idf: skip query terms whose Robertson IDF falls below this threshold.
-    Filtering low-IDF (high-frequency) terms sharpens precision by ignoring generic
-    words that match noise pages as readily as the target.
-
-    fallback_threshold: if the max filtered score for a query is below this value,
-    rescore that query with min_query_idf=0. Recovers queries where IDF filtering
-    removes all discriminative signal (e.g. highly generic/broad queries).
     """
     n_queries = len(queries)
     out = np.zeros((n_queries, bm25.num_chunks), dtype=np.float32)
 
     for qi, query in enumerate(queries):
-        tokens = tokenize(query)
         seen: set = set()
-        for t in tokens:
+        for t in tokenize(query):
             if t in seen:
                 continue
             seen.add(t)
             tid = bm25.term_to_id.get(t)
             if tid is None:
                 continue
-            idf = float(bm25.idf[tid])
-            if idf < min_query_idf:
-                continue
             cids, tfs = bm25.inverted[tid]
-            out[qi, cids] += idf * tfs
-
-        if fallback_threshold > 0.0 and min_query_idf > 0.0 and out[qi].max() < fallback_threshold:
-            seen2: set = set()
-            row = np.zeros(bm25.num_chunks, dtype=np.float32)
-            for t in tokenize(query):
-                if t in seen2:
-                    continue
-                seen2.add(t)
-                tid = bm25.term_to_id.get(t)
-                if tid is None:
-                    continue
-                cids, tfs = bm25.inverted[tid]
-                row[cids] += float(bm25.idf[tid]) * tfs
-            out[qi] = row
+            out[qi, cids] += float(bm25.idf[tid]) * tfs
 
     return out
