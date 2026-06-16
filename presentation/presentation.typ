@@ -67,14 +67,14 @@
 ]
 
 #v(0.5em)
-#align(center)[#text(size: 16pt)[*Final results:* NDCG\@10 = 0.53]]
+#align(center)[#text(size: 16pt)[*Final results:* NDCG\@10 = 0.5297]]
 
 // ============================================================
 == chunk.py
 
 - *chunking strategy:* sliding window + no-overlap per paragraphs
   - Wikipedia articles are _already_ split semantically
-  - file `header.py` used to extract paragraph headers deterministically, using heuristics:
+  - Extract paragraph headers deterministically, using heuristics:
     - Search for short sentences (<= 6 words) before double line breaks `\n\n`
     - Leading capital, ends with a period, no quotes.
     - Reject any phrase carrying an auxiliary/pronoun token (`is`, `was`, `it`, `they`...)
@@ -84,7 +84,7 @@
 == chunk.py: max_words sweep
 
 #align(center)[
-  #image("analysis/figures/s2_maxwords.png", height: 80%)
+  #image("./figures/s2_maxwords.png", height: 80%)
 ]
 
 == chunk.py: title injection
@@ -102,7 +102,7 @@
       - injected article title + paragraph title
   ],
   [
-    #image("analysis/figures/s2_textmode.png", width: 100%)
+    #image("./figures/s2_textmode.png", width: 100%)
   ],
 )
 
@@ -130,7 +130,7 @@
     - Validated on sparse vs dense vs fused
   ],
   [
-    #image("analysis/figures/s5_retrievers.png", width: 100%)
+    #image("./figures/s5_retrievers.png", width: 100%)
   ],
 )
 
@@ -149,7 +149,7 @@
       - BM25 → *near-mean* ($alpha = 0.25$, `top_n=30`).
   ],
   [
-    #image("analysis/figures/s6_aggregation.png", width: 100%)
+    #image("./figures/s6_aggregation.png", width: 100%)
   ],
 )
 
@@ -172,7 +172,7 @@
     - pages re-sorted by total score.
   ],
   [
-    #image("analysis/figures/s7_rrf.png", width: 100%)
+    #image("./figures/s7_rrf.png", width: 100%)
   ],
 )
 
@@ -189,7 +189,7 @@
     - `post` mode: rank the full corpus first, only then drop non-matching pages
   ],
   [
-    #image("analysis/figures/s7_number_filter.png", width: 100%)
+    #image("./figures/s7_number_filter.png", width: 100%)
   ],
 )
 
