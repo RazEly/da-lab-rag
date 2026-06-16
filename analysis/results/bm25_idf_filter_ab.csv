@@ -1,4 +1,0 @@
-query_set,file,n_queries,ndcg_with_filter,ndcg_without_filter,delta_ndcg,recall10_with,recall10_without,recall100_with,recall100_without
-public,public_queries.json,29,0.5428,0.5297,0.0131,0.6321,0.6321,0.9174,0.9338
-llm,llm_queries.json,30,0.856,0.8597,-0.0038,0.9267,0.9378,0.96,0.96
-squad,squad_queries.json,119,0.439,0.4618,-0.0229,0.605,0.6218,0.7899,0.8151

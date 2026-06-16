@@ -16,7 +16,7 @@
 #title-slide()
 
 // ============================================================
-== Slide 1 — Pipeline
+== Pipeline
 
 #align(center)[
   #set text(size: 14pt)
@@ -28,14 +28,13 @@
     spacing: (1.7em, 2.1em),
     edge-stroke: 0.6pt,
 
-    // ---- OFFLINE: build_index (untimed) ----
     node((0.55, -1.2), text(size: 0.82em, fill: rgb("#447"))[*OFFLINE — `build_index`*]),
-    node((0, 0), [corpus\ #text(0.72em)[27,074 pages]], fill: rgb("#eef")),
+    node((0, 0), [corpus\ #text(0.72em)[]], fill: rgb("#eef")),
     node((1.1, 0), [chunk\ #text(0.72em)[`[title] body`]], fill: rgb("#eef")),
-    node((2.3, -0.55), [embed\ #text(0.72em)[MiniLM · L2]], fill: rgb("#eef")),
-    node((3.55, -0.55), [dense index\ #text(0.72em)[FAISS IP · .npy]], fill: rgb("#dfe")),
+    node((2.3, -0.55), [embed\ #text(0.72em)[all-MiniLM-L6-v2]], fill: rgb("#eef")),
+    node((3.55, -0.55), [dense index\ #text(0.72em)[FAISS]], fill: rgb("#dfe")),
     node((2.3, 0.55), [BM25 build\ #text(0.72em)[tokenize]], fill: rgb("#eef")),
-    node((3.55, 0.55), [sparse index\ #text(0.72em)[inverted · .npz]], fill: rgb("#dfe")),
+    node((3.55, 0.55), [sparse index\ #text(0.72em)[]], fill: rgb("#dfe")),
     edge((0, 0), (1.1, 0), "->"),
     edge((1.1, 0), (2.3, -0.55), "->"),
     edge((2.3, -0.55), (3.55, -0.55), "->"),
@@ -45,13 +44,13 @@
     // ---- QUERY-TIME: search_batch (<=60s) ----
     node((0.7, 1.15), text(size: 0.82em, fill: rgb("#744"))[*QUERY-TIME — `search_batch`*]),
     node((0, 2.4), [query], fill: rgb("#fee")),
-    node((1.35, 1.9), [dense\ search], fill: rgb("#fee")),
-    node((1.35, 2.9), [BM25\ score], fill: rgb("#fee")),
+    node((1.35, 1.9), [dense vector\ search], fill: rgb("#fee")),
+    node((1.35, 2.9), [BM25 score], fill: rgb("#fee")),
     node((2.75, 1.9), [chunk→page\ #text(0.7em)[mean · top100]], fill: rgb("#fee")),
     node((2.75, 2.9), [chunk→page\ #text(0.7em)[α=.25 · top30]], fill: rgb("#fee")),
     node((4.05, 2.4), [RRF\ #text(0.7em)[k=28]], fill: rgb("#fed")),
-    node((5.15, 2.4), [number\ post-filter], fill: rgb("#fed")),
-    node((6.2, 2.4), [top-10\ #text(0.7em)[page ids]], fill: rgb("#fed")),
+    node((5.15, 2.4), [post-filter], fill: rgb("#fed")),
+    node((6.2, 2.4), [top 10\ retrieval\ #text(0.7em)[]], fill: rgb("#fed")),
     edge((0, 2.4), (1.35, 1.9), "->"),
     edge((0, 2.4), (1.35, 2.9), "->"),
     edge((1.35, 1.9), (2.75, 1.9), "->"),
@@ -71,26 +70,24 @@
 #align(center)[#text(size: 16pt)[*Final results:* NDCG\@10 = 0.53]]
 
 // ============================================================
-== Slide 2 — chunk.py
+== chunk.py
 
 - *chunking strategy:* sliding window + no-overlap per paragraphs
-- Wikipedia articles are _already_ split semantically
-- file `header.py` used to extract paragraph headers deterministically, using heuristics:
-  - Search for short sentences (<= 6 words) before double line breaks `\n\n`
-  - Leading capital, ends with a period, no quotes.
-  - Reject any phrase carrying an auxiliary/pronoun token (`is`, `was`, `it`, `they`...)
-- proved to be faster and more effective than semantic embeddings.
-- Used recall\@k (k $in [1,10]$) to measure embedding effectiveness:
-  - tested with different overlap window sizes
-  - tested with different `max_words` per chunk - a heuristic for the number of tokens
+  - Wikipedia articles are _already_ split semantically
+  - file `header.py` used to extract paragraph headers deterministically, using heuristics:
+    - Search for short sentences (<= 6 words) before double line breaks `\n\n`
+    - Leading capital, ends with a period, no quotes.
+    - Reject any phrase carrying an auxiliary/pronoun token (`is`, `was`, `it`, `they`...)
 
-== Slide 2 — chunk.py: max_words sweep
+- Used recall\@k (k $in [1,10]$) to measure embedding effectiveness:
+
+== chunk.py: max_words sweep
 
 #align(center)[
   #image("analysis/figures/s2_maxwords.png", height: 80%)
 ]
 
-== Slide 2 — chunk.py: title injection
+== chunk.py: title injection
 
 #grid(
   columns: (1fr, 1.2fr),
@@ -110,13 +107,13 @@
 )
 
 // ============================================================
-== Slide 4 — embed.py
+== embed.py
 
 - No changes where made from the original implementation
 - Optimized batch size for faster GPU run times.
 
 // ============================================================
-== Slide 5 — index.py
+== index.py
 
 #grid(
   columns: (1fr, 1fr),
@@ -129,7 +126,7 @@
       - Sparse index (BM25)
     - Implemented a classic BM25 index to work alongside the dense embeddings
       - Per query term: score `tf-idf`, summed over chunk.
-      - Applied length normalization `B=0.5`
+      - Applied length normalization
     - Validated on sparse vs dense vs fused
   ],
   [
@@ -138,7 +135,7 @@
 )
 
 // ============================================================
-== Slide 6 — retrieve.py
+== retrieve.py
 
 #grid(
   columns: (1fr, 1fr),
@@ -157,7 +154,7 @@
 )
 
 // ============================================================
-== Slide 7 — retrieve.py: Reciprocal Rank Fusion
+== retrieve.py: Reciprocal Rank Fusion
 
 #grid(
   columns: (1.2fr, 1fr),
@@ -179,7 +176,7 @@
   ],
 )
 
-== Slide 7 — retrieve.py: Post-filtering
+== retrieve.py: Post-filtering
 
 #grid(
   columns: (1fr, 1fr),
@@ -197,7 +194,7 @@
 )
 
 // ============================================================
-== Slide 8 - Evaluation
+== Evaluation
 
 #set text(size: 16pt)
 

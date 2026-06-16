@@ -11,8 +11,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Sequence, Set, Tuple
 
-from headers import header_text, peel_headers
-from utils import normalize_page_id
+from utils import header_text, normalize_page_id, peel_headers
 
 MAX_WORDS = 120
 SLIDING_FALLBACK_OVERLAP = 40  # words
@@ -50,16 +49,15 @@ def _split_sentences(
     """Return (body_sentences, forced_breaks, sent_sections, section_names).
 
     Flattened section headings are peeled off each paragraph tail (see
-    ``headers.peel_headers``) and excluded from ``body_sentences`` — they are
+    ``utils.peel_headers``) and excluded from ``body_sentences`` — they are
     labels, not content. Each peeled heading opens a new section:
     ``sent_sections[i]`` is the section number of body sentence ``i`` and
     ``section_names`` maps that number to its title (number 0 = the page lead,
     before any heading).
 
-    Forced breaks correspond to indices i where sentence i begins a new
-    paragraph. Because a heading always sits at the tail of one paragraph and
-    its section body starts in the next, every section change coincides with a
-    forced break — so no assembled chunk ever straddles two sections.
+    Forced breaks = indices where a sentence begins a new paragraph. A heading
+    sits at one paragraph's tail and its body starts in the next, so every
+    section change coincides with a forced break — no chunk straddles sections.
     """
     paragraphs = [p.strip() for p in _PARA_SPLIT_RE.split(content) if p.strip()]
     sentences: List[str] = []

@@ -1,5 +1,0 @@
-indexes/
-.venv-analysis/
-__pycache__/
-*.pyc
-cache/

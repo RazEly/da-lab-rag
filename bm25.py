@@ -12,8 +12,8 @@ from utils import ARTIFACTS_DIR
 
 BM25_INDEX_NAME = "bm25.npz"
 
-# b=0.5 (lower than default 0.75): chunks have uniform length (~40-140 words),
-# so length normalization contributes little — standard b over-penalises short chunks.
+# b=0.5 (< default 0.75): chunks are uniform length (~40-140 words), so length
+# normalization matters little — standard b over-penalises short chunks.
 K1: float = 1.5
 B: float = 0.5
 
@@ -36,12 +36,10 @@ class BM25Index:
 
 
 def build_bm25(chunks, out_dir: Optional[Path] = None) -> None:
-    """
-    Build BM25 index from a list of Chunk objects and save to out_dir/bm25.npz.
+    """Build BM25 index from Chunk objects, save to out_dir/bm25.npz.
 
-    BM25 document text is chunk.text, which already has the title prepended as
-    ``[title] body`` (see chunk._make_chunks) — so title tokens are indexed
-    without re-concatenating c.title (which would double-count them).
+    Document text is chunk.text (already ``[title] body``), so title tokens are
+    indexed without re-concatenating c.title (would double-count).
     """
     out_dir = out_dir or ARTIFACTS_DIR
     n = len(chunks)
@@ -135,11 +133,10 @@ def score_batch(
     bm25: BM25Index,
     queries: List[str],
 ) -> np.ndarray:
-    """
-    Return raw BM25 scores, shape (n_queries, num_chunks).
+    """Raw BM25 scores, shape (n_queries, num_chunks).
 
-    For each query term, looks up its posting list and accumulates idf * tf_sat
-    into the chunk score vector. Duplicate query tokens counted once (BM25 standard).
+    Per query term, accumulate idf * tf_sat from its posting list. Duplicate
+    query tokens counted once (BM25 standard).
     """
     n_queries = len(queries)
     out = np.zeros((n_queries, bm25.num_chunks), dtype=np.float32)

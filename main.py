@@ -1,8 +1,7 @@
-"""
-Section B entry point.
+"""Section B entry point.
 
-The autograder calls run(queries) once with all evaluation queries (batch of 50).
-Query embedding + retrieval must complete within the time limit (GPU available).
+The autograder calls run(queries) once with all 50 eval queries; query embedding
++ retrieval must finish within the time limit (GPU available).
 """
 from __future__ import annotations
 
@@ -13,28 +12,17 @@ from retrieve import search_batch
 
 
 def run(queries: List[str]) -> List[List[int]]:
-    """
-    Rank corpus pages for each query.
+    """Rank corpus pages per query → one page_id list each (best first).
 
-    Parameters
-    ----------
-    queries : list[str]
-        Batch of query strings (e.g. 50 hidden queries at grading time).
-
-    Returns
-    -------
-    list[list[int]]
-        One ranked list of page_id per query (most relevant first).
-        Only the first 10 IDs per list are scored.
+    Only the first 10 IDs per list are scored.
     """
     return search_batch(queries)
 
 
 def build_offline_index(subset: int | None = None) -> None:
-    """Run once locally to create artifacts/ (not timed at grading).
+    """Run once locally to create artifacts/ (untimed).
 
-    subset: index only N pages (ground-truth-inclusive) for fast local dev.
-            Leave None for the real submission build.
+    subset: index only N pages (GT-inclusive) for fast local dev; None = full build.
     """
     build_index(subset=subset)
 

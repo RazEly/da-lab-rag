@@ -1,12 +1,8 @@
-# Heavy local-only files — never push
 .venv/
 __pycache__/
 *.pyc
 pyrightconfig.json
-scaling.log
 
-# 27k-page corpus (427MB): grader never reads it; only build_index.py does (untimed).
-# Keep data/public_queries.json — eval_public.py needs it on a fresh clone.
 data/Wikipedia Entries/
 
 # faiss.index (~400MB full build): NOT shipped — rebuilt in-memory from
